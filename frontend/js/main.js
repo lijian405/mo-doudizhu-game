@@ -279,7 +279,16 @@ function updateTurnIndicator(currentPlayerIndex, players) {
       if (currentPlayer.name === playerName) {
         console.log('轮到自己出牌，启用出牌按钮');
         document.getElementById('play-btn').disabled = false;
-        document.getElementById('pass-btn').disabled = false;
+        
+        // 检查出牌区域是否为空（游戏刚刚开始）
+        const isFirstMove = playCardsContainer.children.length === 0;
+        if (isFirstMove) {
+          console.log('游戏刚刚开始，第一个出牌的玩家不能选择"不出"');
+          document.getElementById('pass-btn').disabled = true;
+        } else {
+          console.log('游戏进行中，玩家可以选择"不出"');
+          document.getElementById('pass-btn').disabled = false;
+        }
       } else {
         console.log('轮到其他玩家出牌，禁用出牌按钮');
         document.getElementById('play-btn').disabled = true;
