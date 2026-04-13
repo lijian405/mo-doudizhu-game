@@ -1,0 +1,24 @@
+{
+  "name": "doudizhu",
+  "version": "1.0.0",
+  "description": "联机斗地主游戏",
+  "main": "backend/server/index.js",
+  "scripts": {
+    "start": "node backend/server/index.js",
+    "dev": "nodemon backend/server/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["斗地主", "游戏", "联机", "Node.js"],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.4",
+    "mysql2": "^3.9.1",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.3"
+  }
+}

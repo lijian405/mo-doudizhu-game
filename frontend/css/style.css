@@ -1,0 +1,397 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f0f0f0;
+  color: #333;
+}
+
+#game-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* 登录界面 */
+#login-screen {
+  background-color: white;
+  padding: 40px;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  margin-top: 100px;
+}
+
+#login-screen h1 {
+  margin-bottom: 30px;
+  color: #333;
+}
+
+.form-group {
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 16px;
+}
+
+button {
+  padding: 10px 20px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 16px;
+  cursor: pointer;
+  margin: 5px;
+}
+
+button:hover {
+  background-color: #45a049;
+}
+
+/* 房间界面 */
+#room-screen {
+  background-color: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  margin-top: 20px;
+}
+
+#room-screen h2 {
+  margin-bottom: 20px;
+}
+
+#players-list {
+  margin-bottom: 20px;
+}
+
+#players-ul {
+  list-style: none;
+  margin-top: 10px;
+}
+
+#players-ul li {
+  padding: 10px;
+  border-bottom: 1px solid #ddd;
+}
+
+/* 游戏界面 */
+#game-screen {
+  background-color: #2c7d34;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  margin-top: 20px;
+  color: white;
+}
+
+.player-area {
+  margin-bottom: 20px;
+}
+
+.top-player {
+  text-align: center;
+}
+
+.middle-area {
+  display: flex;
+  justify-content: space-between;
+  margin: 20px 0;
+}
+
+.left-player {
+  flex: 1;
+  text-align: center;
+}
+
+.play-area {
+  flex: 2;
+  text-align: center;
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 20px;
+  border-radius: 10px;
+  margin-left: 20px;
+}
+
+.bottom-player {
+  text-align: center;
+}
+
+.player-score {
+  font-size: 14px;
+  color: #ffcc00;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.landlord-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  background-color: #ff6b6b;
+  color: white;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: bold;
+  margin-bottom: 5px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.landlord-badge.show {
+  opacity: 1;
+}
+
+.turn-indicator {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  background-color: #4CAF50;
+  border-radius: 50%;
+  margin-bottom: 5px;
+  opacity: 0;
+  display: none;
+  transition: opacity 0.3s ease;
+  animation: pulse 1.5s infinite;
+}
+
+.turn-indicator.show {
+  opacity: 1;
+  display: block;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+}
+
+.player-cards {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.cards-container {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+/* 卡牌样式 */
+.card {
+  width: 60px;
+  height: 80px;
+  background-color: white;
+  border-radius: 5px;
+  margin: 5px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: #333;
+  font-weight: bold;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+}
+
+.card.selected {
+  border: 2px solid yellow;
+  background-color: #fff3cd;
+}
+
+.card .suit {
+  font-size: 24px;
+  margin-bottom: 5px;
+}
+
+.card .rank {
+  font-size: 16px;
+}
+
+/* 地主牌区域 */
+.landlord-cards {
+  text-align: center;
+  margin: 20px 0;
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 15px;
+  border-radius: 10px;
+}
+
+/* 操作按钮 */
+.action-buttons {
+  margin-top: 10px;
+}
+
+.action-buttons button {
+  margin: 0 10px;
+  padding: 10px 20px;
+  font-size: 16px;
+  font-weight: bold;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+#play-btn {
+  background-color: #4CAF50;
+  color: white;
+}
+
+#play-btn:hover {
+  background-color: #45a049;
+  transform: scale(1.05);
+}
+
+#play-btn:disabled {
+  background-color: #cccccc;
+  color: #666666;
+  cursor: not-allowed;
+  transform: none;
+}
+
+#pass-btn {
+  background-color: #f44336;
+  color: white;
+}
+
+#pass-btn:hover {
+  background-color: #da190b;
+  transform: scale(1.05);
+}
+
+#pass-btn:disabled {
+  background-color: #cccccc;
+  color: #666666;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 叫分界面 */
+#calling-screen {
+  background-color: #2c7d34;
+  padding: 40px;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  margin-top: 20px;
+  color: white;
+  text-align: center;
+}
+
+#calling-screen h2 {
+  margin-bottom: 30px;
+}
+
+#calling-info {
+  margin-bottom: 30px;
+  font-size: 18px;
+}
+
+.calling-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.calling-buttons button {
+  padding: 15px 30px;
+  font-size: 18px;
+  font-weight: bold;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.calling-buttons button:hover {
+  transform: scale(1.05);
+}
+
+#call-3-btn {
+  background-color: #ff6b6b;
+}
+
+#call-3-btn:hover {
+  background-color: #ee5a5a;
+}
+
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .middle-area {
+    flex-direction: column;
+  }
+  
+  .left-player, .right-player, .play-area {
+    margin: 10px 0;
+  }
+  
+  .card {
+    width: 50px;
+    height: 70px;
+  }
+}
+
+/* 游戏消息提示 */
+.game-message {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 20px;
+  border-radius: 5px;
+  color: white;
+  font-weight: bold;
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.game-message.show {
+  opacity: 1;
+}
+
+.game-message.error {
+  background-color: #f44336;
+}
+
+.game-message.success {
+  background-color: #4CAF50;
+}
+
+.game-message.info {
+  background-color: #2196F3;
+}
