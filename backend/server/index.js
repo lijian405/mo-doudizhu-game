@@ -196,6 +196,15 @@ io.on('connection', (socket) => {
     if (game) {
       // 检查是否是当前玩家
       if (socket.id === game.players[game.currentPlayerIndex].id) {
+        // 检查如果出牌区的牌是当前玩家出的，则不允许不出牌
+        if (game.lastPlayerId === socket.id) {
+          // 发送错误消息
+          socket.emit('playCardsFailed', {
+            message: '当前出牌区的牌是您出的，必须出牌'
+          });
+          return;
+        }
+        
         // 直接转到下一个玩家
         game.currentPlayerIndex = (game.currentPlayerIndex + 1) % 3;
         
