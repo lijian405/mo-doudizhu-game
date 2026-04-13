@@ -673,29 +673,34 @@ function handleCountdownUpdated(data) {
   console.log('=== 处理倒计时更新 ===');
   console.log('倒计时:', data.countdown);
   console.log('当前玩家索引:', data.currentPlayerIndex);
+  console.log('玩家列表:', data.players);
   
   // 隐藏所有倒计时指示器
   document.getElementById('top-player-countdown').classList.remove('show');
   document.getElementById('left-player-countdown').classList.remove('show');
   document.getElementById('bottom-player-countdown').classList.remove('show');
   
-  // 找到当前玩家
-  const currentPlayer = data.players && data.players[data.currentPlayerIndex];
-  if (!currentPlayer) return;
-  
-  // 显示当前玩家的倒计时
-  if (currentPlayer.name === topPlayerName.textContent) {
-    const countdownElement = document.getElementById('top-player-countdown');
-    countdownElement.textContent = data.countdown;
-    countdownElement.classList.add('show');
-  } else if (currentPlayer.name === leftPlayerName.textContent) {
-    const countdownElement = document.getElementById('left-player-countdown');
-    countdownElement.textContent = data.countdown;
-    countdownElement.classList.add('show');
-  } else if (currentPlayer.name === bottomPlayerName.textContent) {
-    const countdownElement = document.getElementById('bottom-player-countdown');
-    countdownElement.textContent = data.countdown;
-    countdownElement.classList.add('show');
+  // 直接根据当前玩家索引显示倒计时
+  // 这里假设玩家位置是固定的：0->top, 1->left, 2->bottom
+  switch (data.currentPlayerIndex) {
+    case 0:
+      const topCountdown = document.getElementById('top-player-countdown');
+      topCountdown.textContent = data.countdown;
+      topCountdown.classList.add('show');
+      console.log('显示顶部玩家倒计时:', data.countdown);
+      break;
+    case 1:
+      const leftCountdown = document.getElementById('left-player-countdown');
+      leftCountdown.textContent = data.countdown;
+      leftCountdown.classList.add('show');
+      console.log('显示左侧玩家倒计时:', data.countdown);
+      break;
+    case 2:
+      const bottomCountdown = document.getElementById('bottom-player-countdown');
+      bottomCountdown.textContent = data.countdown;
+      bottomCountdown.classList.add('show');
+      console.log('显示底部玩家倒计时:', data.countdown);
+      break;
   }
   
   console.log('=== 处理倒计时更新完成 ===');

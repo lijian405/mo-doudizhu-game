@@ -117,7 +117,10 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('countdownUpdated', {
       countdown: game.countdown,
       currentPlayerIndex: game.currentPlayerIndex,
-      players: game.players
+      players: game.players.map(p => ({
+        id: p.id,
+        name: p.name
+      }))
     });
     
     // 启动倒计时
@@ -128,7 +131,10 @@ io.on('connection', (socket) => {
       io.to(roomId).emit('countdownUpdated', {
         countdown: game.countdown,
         currentPlayerIndex: game.currentPlayerIndex,
-        players: game.players
+        players: game.players.map(p => ({
+          id: p.id,
+          name: p.name
+        }))
       });
       
       // 倒计时结束
