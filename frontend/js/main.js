@@ -60,6 +60,7 @@ function init() {
   socket.on('cardsPlayed', handleCardsPlayed);
   socket.on('gameEnded', handleGameEnded);
   socket.on('playCardsFailed', handlePlayCardsFailed);
+  socket.on('countdownUpdated', handleCountdownUpdated);
 }
 
 // 加入房间
