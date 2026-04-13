@@ -1,7 +1,9 @@
 ## 联机斗地主游戏
+
 开发了一个可联机的斗地主游戏，支持多个玩家同时参与游戏。
 
 ## 游戏规则
+
 1 、发牌
 一副牌54 张，一人17 张，留3 张做底牌，在确定地主之前玩家不能看底牌。
 2 、叫牌
@@ -38,33 +40,36 @@
 底分：叫牌的分数为1 、2、3分
 倍数：初始为1 ，每炸弹*2 、春天*2。（火箭和炸弹留在手上没出的不算）
 一局结束后：
-地主胜：地主得分为2* 底分* 倍数。其余玩家各得：- 底分* 倍数
-地主败：地主得分为-2* 底分* 倍数。其余玩家各得：底分* 倍数
-地主所有牌出完，其他两家一张都未出：分数* 2
-其他两家中有一家先出完牌，地主只出过一手牌：分数* 2
-逃跑扣分：底分* 倍数*3
+地主胜：地主得分为2\* 底分\* 倍数。其余玩家各得：- 底分\* 倍数
+地主败：地主得分为-2\* 底分\* 倍数。其余玩家各得：底分\* 倍数
+地主所有牌出完，其他两家一张都未出：分数\* 2
+其他两家中有一家先出完牌，地主只出过一手牌：分数\* 2
+逃跑扣分：底分\* 倍数\*3
 还没人叫牌时逃跑：扣3 分
 积分=底分×倍数×玩家身份系数（农民为1地主为2）
 
 ## 游戏流程
- 1. 玩家连接服务器，进入游戏房间。
- 2. 玩家开始游戏，等待其他玩家玩家。
- 3. 玩家出牌，根据游戏规则进行判断。
- 4. 游戏结束，显示游戏结果。
 
- ## 技术实现
- 1. 游戏采用客户端-服务器架构，客户端负责游戏界面和交互，服务器负责游戏逻辑和数据存储。
- 2. 游戏采用TCP协议进行通信，确保数据的实时性和可靠性。
- 3. 游戏采用多线程技术，支持多个玩家同时参与游戏。
- 4. 游戏采用数据库技术，存储玩家信息和游戏数据。
- 5. 游戏采用游戏引擎技术，实现游戏逻辑和动画效果。
- 6. 前端使用HTML5CSS3JavaScript实现游戏界面和交互。
- 7. 后端使用NodeJs框架实现游戏逻辑和数据存储。
+1. 玩家连接服务器，进入游戏房间。
+2. 玩家开始游戏，等待其他玩家玩家。
+3. 玩家出牌，根据游戏规则进行判断。
+4. 游戏结束，显示游戏结果。
 
- ## 游戏界面
- 1. 游戏界面采用图形化界面，包括游戏房间、玩家界面、牌组界面等。
- 2. 玩家界面包括玩家信息、牌组、出牌按钮等。
- 3. 游戏房间界面包括游戏房间列表、创建房间按钮、加入房间按钮等。
+## 技术实现
+
+1. 游戏采用客户端-服务器架构，客户端负责游戏界面和交互，服务器负责游戏逻辑和数据存储。
+2. 游戏采用TCP协议进行通信，确保数据的实时性和可靠性。
+3. 游戏采用多线程技术，支持多个玩家同时参与游戏。
+4. 游戏采用数据库技术，存储玩家信息和游戏数据。
+5. 游戏采用游戏引擎技术，实现游戏逻辑和动画效果。
+6. 前端使用HTML5CSS3JavaScript实现游戏界面和交互。
+7. 后端使用NodeJs框架实现游戏逻辑和数据存储。
+
+## 游戏界面
+
+1. 游戏界面采用图形化界面，包括游戏房间、玩家界面、牌组界面等。
+2. 玩家界面包括玩家信息、牌组、出牌按钮等。
+3. 游戏房间界面包括游戏房间列表、创建房间按钮、加入房间按钮等。
 
 ## 通讯协议
 
@@ -76,25 +81,25 @@
 
 #### 2.1 客户端发送的事件
 
-| 事件名 | 描述 | JSON格式 |
-|-------|------|---------|
-| `joinRoom` | 加入房间 | `{"roomId": "string", "playerName": "string"}` |
-| `leaveRoom` | 离开房间 | `{"roomId": "string"}` |
-| `startGame` | 开始游戏 | `{"roomId": "string"}` |
-| `callLandlord` | 叫地主 | `{"roomId": "string", "score": number}` |
-| `playCards` | 出牌 | `{"roomId": "string", "cards": [{"suit": "string", "rank": "string", "value": number}]}` |
-| `pass` | 不出牌 | `{"roomId": "string"}` |
+| 事件名            | 描述   | JSON格式                                                                                   |
+| -------------- | ---- | ---------------------------------------------------------------------------------------- |
+| `joinRoom`     | 加入房间 | `{"roomId": "string", "playerName": "string"}`                                           |
+| `leaveRoom`    | 离开房间 | `{"roomId": "string"}`                                                                   |
+| `startGame`    | 开始游戏 | `{"roomId": "string"}`                                                                   |
+| `callLandlord` | 叫地主  | `{"roomId": "string", "score": number}`                                                  |
+| `playCards`    | 出牌   | `{"roomId": "string", "cards": [{"suit": "string", "rank": "string", "value": number}]}` |
+| `pass`         | 不出牌  | `{"roomId": "string"}`                                                                   |
 
 #### 2.2 服务器发送的事件
 
-| 事件名 | 描述 | JSON格式 |
-|-------|------|---------|
-| `roomUpdated` | 房间更新 | `{"room": {"id": "string", "players": [{"id": "string", "name": "string"}], "status": "string"}}` |
-| `gameStarted` | 游戏开始 | `{"room": {"id": "string", "players": [{"id": "string", "name": "string"}], "status": "string"}, "players": [{"id": "string", "name": "string", "cards": [{"suit": "string", "rank": "string", "value": number}]}], "landlordCards": [{"suit": "string", "rank": "string", "value": number}], "landlordPlayerId": "string", "currentPlayerIndex": number}` |
-| `callingUpdated` | 叫地主状态更新 | `{"currentCallerIndex": number, "highestScore": number, "highestBidder": "string", "gameStatus": "string", "players": [{"id": "string", "name": "string"}]}` |
-| `cardsPlayed` | 出牌 | `{"playerId": "string", "cards": [{"suit": "string", "rank": "string", "value": number}], "players": [{"id": "string", "name": "string", "cards": [{"suit": "string", "rank": "string", "value": number}]}], "currentPlayerIndex": number, "gameStatus": "string", "multiplier": number}` |
-| `gameEnded` | 游戏结束 | `{"winnerId": "string", "scores": {"playerId": number}, "baseScore": number, "multiplier": number}` |
-| `playCardsFailed` | 出牌失败 | `{"message": "string"}` |
+| 事件名               | 描述      | JSON格式                                                                                                                                                                                                                                                                                                                                                     |
+| ----------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `roomUpdated`     | 房间更新    | `{"room": {"id": "string", "players": [{"id": "string", "name": "string"}], "status": "string"}}`                                                                                                                                                                                                                                                          |
+| `gameStarted`     | 游戏开始    | `{"room": {"id": "string", "players": [{"id": "string", "name": "string"}], "status": "string"}, "players": [{"id": "string", "name": "string", "cards": [{"suit": "string", "rank": "string", "value": number}]}], "landlordCards": [{"suit": "string", "rank": "string", "value": number}], "landlordPlayerId": "string", "currentPlayerIndex": number}` |
+| `callingUpdated`  | 叫地主状态更新 | `{"currentCallerIndex": number, "highestScore": number, "highestBidder": "string", "gameStatus": "string", "players": [{"id": "string", "name": "string"}]}`                                                                                                                                                                                               |
+| `cardsPlayed`     | 出牌      | `{"playerId": "string", "cards": [{"suit": "string", "rank": "string", "value": number}], "players": [{"id": "string", "name": "string", "cards": [{"suit": "string", "rank": "string", "value": number}]}], "currentPlayerIndex": number, "gameStatus": "string", "multiplier": number}`                                                                  |
+| `gameEnded`       | 游戏结束    | `{"winnerId": "string", "scores": {"playerId": number}, "baseScore": number, "multiplier": number}`                                                                                                                                                                                                                                                        |
+| `playCardsFailed` | 出牌失败    | `{"message": "string"}`                                                                                                                                                                                                                                                                                                                                    |
 
 ### 3. 数据结构定义
 
@@ -139,3 +144,26 @@
   "value": number         // 牌值（用于比较大小）
 }
 ```
+
+## 增加出牌倒时计功能 
+
+- 服务器端应该增加一个出牌倒计时，防止 当前出牌玩家一直没有出牌，默认计时为30秒，可以修改。
+- 如果倒计时结束时玩家 没有出牌， 则流转到下个玩家
+- 如果倒计时结束前玩家完成出牌，则停止倒计时，并为下个玩家重新计时。
+- 在主界面当前出牌玩家标识处显示倒计时数字。所有玩家可以看到。
+- 轮转逻辑与“不出”功能 一至，直到流转到最后出牌的玩家那里，这时候服务器不再计时 ，因为该玩家必须出牌。
+
+
+
+# 新功能需求增加
+
+## 主界面增加”房间列表功能“
+
+- 页面加载时，请求后端 接口，后端 从房间数据表中查询所有房间
+- 玩家可以在主界面的”创建房间“按钮创建房间，点击按钮弹出Modal层，玩家输入”玩家名称“就可以创建，房间id由后端 生成唯一值，可以用数据库的自增ID
+- 房间显示三种状态：
+  - 等待中：当房间人数不足3人时。
+  - 已开始：当房间人数达到3人而且游戏已经开始。
+  - 满员中：当房间人数达到3人且游戏没有开始时。
+- 当玩家点击”等待中“的房间时，弹出Modal层，用户输出玩家名称，即可进入房间。
+- 当玩家点击”已开始“或”满员中“的房间时，给出相应提示。

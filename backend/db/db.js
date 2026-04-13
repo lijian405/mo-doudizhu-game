@@ -4,7 +4,7 @@ const mysql = require('mysql2');
 const pool = mysql.createPool({
   host: 'localhost',
   user: 'root',
-  password: 'password',
+  password: '@wZkVJ$NWnL!RQV$uHHw3N*k3',
   database: 'doudizhu',
   waitForConnections: true,
   connectionLimit: 10,
@@ -19,6 +19,19 @@ function initDatabase() {
       name VARCHAR(50) NOT NULL,
       score INT DEFAULT 0,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `;
+  
+  const createRoomsTable = `
+    CREATE TABLE IF NOT EXISTS rooms (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      room_id VARCHAR(50) NOT NULL UNIQUE,
+      status ENUM('waiting', 'full', 'playing') DEFAULT 'waiting',
+      player_count INT DEFAULT 0,
+      max_players INT DEFAULT 3,
+      owner_name VARCHAR(50),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `;
   
@@ -38,6 +51,14 @@ function initDatabase() {
       console.error('创建用户表失败:', err);
     } else {
       console.log('用户表创建成功');
+    }
+  });
+  
+  pool.execute(createRoomsTable, (err) => {
+    if (err) {
+      console.error('创建房间表失败:', err);
+    } else {
+      console.log('房间表创建成功');
     }
   });
   
@@ -106,11 +127,86 @@ function updateUserScore(userId, score) {
   });
 }
 
+// 创建房间
+function createRoom(roomId, ownerName) {
+  return new Promise((resolve, reject) => {
+    const sql = 'INSERT INTO rooms (room_id, status, player_count, owner_name) VALUES (?, ?, ?, ?)';
+    pool.execute(sql, [roomId, 'waiting', 1, ownerName], (err, results) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(results.insertId);
+      }
+    });
+  });
+}
+
+// 获取房间列表
+function getRooms() {
+  return new Promise((resolve, reject) => {
+    const sql = 'SELECT * FROM rooms ORDER BY updated_at DESC';
+    pool.execute(sql, (err, results) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(results);
+      }
+    });
+  });
+}
+
+// 更新房间状态
+function updateRoomStatus(roomId, status, playerCount) {
+  return new Promise((resolve, reject) => {
+    const sql = 'UPDATE rooms SET status = ?, player_count = ? WHERE room_id = ?';
+    pool.execute(sql, [status, playerCount, roomId], (err, results) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(results.affectedRows > 0);
+      }
+    });
+  });
+}
+
+// 删除房间
+function deleteRoom(roomId) {
+  return new Promise((resolve, reject) => {
+    const sql = 'DELETE FROM rooms WHERE room_id = ?';
+    pool.execute(sql, [roomId], (err, results) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(results.affectedRows > 0);
+      }
+    });
+  });
+}
+
+// 获取房间信息
+function getRoomByRoomId(roomId) {
+  return new Promise((resolve, reject) => {
+    const sql = 'SELECT * FROM rooms WHERE room_id = ?';
+    pool.execute(sql, [roomId], (err, results) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(results[0]);
+      }
+    });
+  });
+}
+
 module.exports = {
   initDatabase,
   registerUser,
   getUserById,
   saveGameResult,
   updateUserScore,
+  createRoom,
+  getRooms,
+  updateRoomStatus,
+  deleteRoom,
+  getRoomByRoomId,
   pool
 };

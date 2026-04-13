@@ -60,9 +60,10 @@ function dealCards(players) {
     players[i % 3].cards.push(deck[i]);
   }
   
-  // 对每个玩家的牌进行排序
+  // 对每个玩家的牌进行排序并设置牌数
   for (const player of players) {
     player.cards.sort((a, b) => b.value - a.value);
+    player.cardCount = player.cards.length;
   }
   
   return { players, 地主Cards };
@@ -282,6 +283,7 @@ class Game {
         if (地主Player) {
           地主Player.cards = [...地主Player.cards, ...this.地主Cards];
           地主Player.cards.sort((a, b) => b.value - a.value);
+          地主Player.cardCount = 地主Player.cards.length;
         }
         
         // 开始游戏，地主先出牌
@@ -319,6 +321,9 @@ class Game {
           player.cards.splice(index, 1);
         }
       }
+      
+      // 更新牌数
+      player.cardCount = player.cards.length;
       
       this.lastCards = cards;
       this.lastPlayerId = playerId;
