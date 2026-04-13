@@ -668,5 +668,38 @@ function handlePlayCardsFailed(data) {
   console.log('=== 出牌失败处理完成 ===');
 }
 
+// 处理倒计时更新
+function handleCountdownUpdated(data) {
+  console.log('=== 处理倒计时更新 ===');
+  console.log('倒计时:', data.countdown);
+  console.log('当前玩家索引:', data.currentPlayerIndex);
+  
+  // 隐藏所有倒计时指示器
+  document.getElementById('top-player-countdown').classList.remove('show');
+  document.getElementById('left-player-countdown').classList.remove('show');
+  document.getElementById('bottom-player-countdown').classList.remove('show');
+  
+  // 找到当前玩家
+  const currentPlayer = data.players && data.players[data.currentPlayerIndex];
+  if (!currentPlayer) return;
+  
+  // 显示当前玩家的倒计时
+  if (currentPlayer.name === topPlayerName.textContent) {
+    const countdownElement = document.getElementById('top-player-countdown');
+    countdownElement.textContent = data.countdown;
+    countdownElement.classList.add('show');
+  } else if (currentPlayer.name === leftPlayerName.textContent) {
+    const countdownElement = document.getElementById('left-player-countdown');
+    countdownElement.textContent = data.countdown;
+    countdownElement.classList.add('show');
+  } else if (currentPlayer.name === bottomPlayerName.textContent) {
+    const countdownElement = document.getElementById('bottom-player-countdown');
+    countdownElement.textContent = data.countdown;
+    countdownElement.classList.add('show');
+  }
+  
+  console.log('=== 处理倒计时更新完成 ===');
+}
+
 // 初始化应用
 init();

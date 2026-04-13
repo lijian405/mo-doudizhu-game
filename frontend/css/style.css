@@ -191,6 +191,29 @@ button:hover {
   }
 }
 
+.countdown-indicator {
+  display: inline-block;
+  width: 30px;
+  height: 30px;
+  background-color: #f44336;
+  color: white;
+  border-radius: 50%;
+  margin-bottom: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+  opacity: 0;
+  display: none;
+  transition: opacity 0.3s ease;
+}
+
+.countdown-indicator.show {
+  opacity: 1;
+  display: flex;
+}
+
 .player-cards {
   display: flex;
   justify-content: center;

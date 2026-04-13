@@ -90,6 +90,84 @@ io.on('connection', (socket) => {
     }
   });
   
+  // 启动倒计时
+  function startCountdown(roomId) {
+    const game = games.get(roomId);
+    if (!game || game.status !== 'playing') return;
+    
+    // 清除之前的计时器
+    if (game.countdownTimer) {
+      clearInterval(game.countdownTimer);
+    }
+    
+    // 检查是否是最后出牌的玩家（出牌区的牌是当前玩家出的）
+    if (game.lastPlayerId === game.players[game.currentPlayerIndex].id) {
+      // 最后出牌的玩家必须出牌，不需要倒计时
+      io.to(roomId).emit('countdownUpdated', {
+        countdown: 0,
+        currentPlayerIndex: game.currentPlayerIndex
+      });
+      return;
+    }
+    
+    // 重置倒计时
+    game.countdown = 30;
+    
+    // 发送初始倒计时
+    io.to(roomId).emit('countdownUpdated', {
+      countdown: game.countdown,
+      currentPlayerIndex: game.currentPlayerIndex,
+      players: game.players
+    });
+    
+    // 启动倒计时
+    game.countdownTimer = setInterval(() => {
+      game.countdown--;
+      
+      // 发送倒计时更新
+      io.to(roomId).emit('countdownUpdated', {
+        countdown: game.countdown,
+        currentPlayerIndex: game.currentPlayerIndex,
+        players: game.players
+      });
+      
+      // 倒计时结束
+      if (game.countdown <= 0) {
+        clearInterval(game.countdownTimer);
+        game.countdownTimer = null;
+        
+        // 流转到下一个玩家
+        game.currentPlayerIndex = (game.currentPlayerIndex + 1) % 3;
+        
+        // 通知所有玩家
+        io.to(roomId).emit('cardsPlayed', {
+          playerId: game.players[(game.currentPlayerIndex + 2) % 3].id, // 上一个玩家
+          cards: [],
+          players: game.players.map(p => ({
+            id: p.id,
+            name: p.name,
+            cards: p.cards
+          })),
+          currentPlayerIndex: game.currentPlayerIndex,
+          gameStatus: game.status,
+          multiplier: game.倍数
+        });
+        
+        // 为下一个玩家启动倒计时
+        startCountdown(roomId);
+      }
+    }, 1000);
+  }
+
+  // 停止倒计时
+  function stopCountdown(roomId) {
+    const game = games.get(roomId);
+    if (game && game.countdownTimer) {
+      clearInterval(game.countdownTimer);
+      game.countdownTimer = null;
+    }
+  }
+
   // 开始游戏
   socket.on('startGame', (data) => {
     const { roomId } = data;
@@ -146,6 +224,9 @@ io.on('connection', (socket) => {
             landlordPlayerId: game.地主PlayerId,
             currentPlayerIndex: game.currentPlayerIndex
           });
+          
+          // 游戏开始后启动倒计时
+          startCountdown(roomId);
         }
       }
     }
@@ -158,30 +239,36 @@ io.on('connection', (socket) => {
     if (game) {
       const success = game.playCards(socket.id, cards);
       if (success) {
-        io.to(roomId).emit('cardsPlayed', {
-          playerId: socket.id,
-          cards,
-          players: game.players.map(p => ({
-            id: p.id,
-            name: p.name,
-            cards: p.cards
-          })),
-          currentPlayerIndex: game.currentPlayerIndex,
-          gameStatus: game.status,
-          multiplier: game.倍数
-        });
-        
-        // 检查游戏是否结束
-        if (game.status === 'ended') {
-          const scores = game.calculateScores();
-          io.to(roomId).emit('gameEnded', {
-            winnerId: socket.id,
-            scores: scores,
-            baseScore: game.底分,
+          // 停止当前倒计时
+          stopCountdown(roomId);
+          
+          io.to(roomId).emit('cardsPlayed', {
+            playerId: socket.id,
+            cards,
+            players: game.players.map(p => ({
+              id: p.id,
+              name: p.name,
+              cards: p.cards
+            })),
+            currentPlayerIndex: game.currentPlayerIndex,
+            gameStatus: game.status,
             multiplier: game.倍数
           });
-        }
-      } else {
+          
+          // 检查游戏是否结束
+          if (game.status === 'ended') {
+            const scores = game.calculateScores();
+            io.to(roomId).emit('gameEnded', {
+              winnerId: socket.id,
+              scores: scores,
+              baseScore: game.底分,
+              multiplier: game.倍数
+            });
+          } else {
+            // 为下一个玩家启动倒计时
+            startCountdown(roomId);
+          }
+        } else {
         socket.emit('playCardsFailed', {
           message: '出牌无效'
         });
@@ -205,6 +292,9 @@ io.on('connection', (socket) => {
           return;
         }
         
+        // 停止当前倒计时
+        stopCountdown(roomId);
+        
         // 直接转到下一个玩家
         game.currentPlayerIndex = (game.currentPlayerIndex + 1) % 3;
         
@@ -221,6 +311,9 @@ io.on('connection', (socket) => {
           gameStatus: game.status,
           multiplier: game.倍数
         });
+        
+        // 为下一个玩家启动倒计时
+        startCountdown(roomId);
       }
     }
   });

@@ -246,6 +246,8 @@ class Game {
     this.倍数 = 1;
     this.炸弹数量 = 0;
     this.春天 = false;
+    this.countdown = 30; // 默认倒计时30秒
+    this.countdownTimer = null;
   }
   
   start() {
