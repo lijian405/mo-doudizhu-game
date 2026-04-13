@@ -18,17 +18,55 @@ body {
 
 /* 登录界面 */
 #login-screen {
-  background-color: white;
-  padding: 40px;
-  border-radius: 10px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  text-align: center;
-  margin-top: 100px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
 }
 
-#login-screen h1 {
-  margin-bottom: 30px;
+.login-container {
+  background-color: white;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  padding: 40px;
+  width: 100%;
+  max-width: 450px;
+  text-align: center;
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.login-header h1 {
+  margin-bottom: 10px;
   color: #333;
+  font-size: 2.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.login-subtitle {
+  margin-bottom: 30px;
+  color: #666;
+  font-size: 1.1rem;
+}
+
+.login-form {
+  margin-bottom: 30px;
 }
 
 .form-group {
@@ -38,16 +76,100 @@ body {
 
 .form-group label {
   display: block;
-  margin-bottom: 5px;
-  font-weight: bold;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #333;
+  font-size: 0.9rem;
 }
 
-.form-group input {
+.input-container {
+  position: relative;
+  background-color: #f8f9fa;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.input-container:hover {
+  border-color: #667eea;
+}
+
+.input-container:focus-within {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.input-container .icon {
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.2rem;
+  color: #666;
+}
+
+.input-container input {
   width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  font-size: 16px;
+  padding: 15px 15px 15px 45px;
+  border: none;
+  background-color: transparent;
+  font-size: 1rem;
+  color: #333;
+  outline: none;
+}
+
+.input-container input::placeholder {
+  color: #999;
+}
+
+.login-buttons {
+  display: flex;
+  gap: 15px;
+  margin-top: 30px;
+}
+
+.login-buttons button {
+  flex: 1;
+  padding: 15px;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+#join-room-btn {
+  background-color: #667eea;
+  color: white;
+}
+
+#join-room-btn:hover {
+  background-color: #5a6fd8;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+#create-room-btn {
+  background-color: #f8f9fa;
+  color: #333;
+  border: 2px solid #e9ecef;
+}
+
+#create-room-btn:hover {
+  background-color: #e9ecef;
+  border-color: #667eea;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.login-footer {
+  margin-top: 30px;
+  color: #999;
+  font-size: 0.8rem;
 }
 
 button {
@@ -59,10 +181,17 @@ button {
   font-size: 16px;
   cursor: pointer;
   margin: 5px;
+  transition: all 0.3s ease;
 }
 
 button:hover {
   background-color: #45a049;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+button:active {
+  transform: translateY(0);
 }
 
 /* 房间界面 */
