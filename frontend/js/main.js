@@ -72,7 +72,10 @@ function joinRoom() {
     return;
   }
   
-  socket.emit('joinRoom', roomId, playerName);
+  socket.emit('joinRoom', {
+    roomId: roomId,
+    playerName: playerName
+  });
   loginScreen.style.display = 'none';
   roomScreen.style.display = 'block';
   currentRoomIdSpan.textContent = roomId;
@@ -88,7 +91,10 @@ function createRoom() {
   
   // 生成随机房间ID
   roomId = Math.random().toString(36).substr(2, 9);
-  socket.emit('joinRoom', roomId, playerName);
+  socket.emit('joinRoom', {
+    roomId: roomId,
+    playerName: playerName
+  });
   loginScreen.style.display = 'none';
   roomScreen.style.display = 'block';
   currentRoomIdSpan.textContent = roomId;
@@ -96,7 +102,9 @@ function createRoom() {
 
 // 离开房间
 function leaveRoom() {
-  socket.emit('leaveRoom', roomId);
+  socket.emit('leaveRoom', {
+    roomId: roomId
+  });
   roomScreen.style.display = 'none';
   gameScreen.style.display = 'none';
   loginScreen.style.display = 'block';
@@ -106,13 +114,16 @@ function leaveRoom() {
 
 // 开始游戏
 function startGame() {
-  socket.emit('startGame', roomId);
+  socket.emit('startGame', {
+    roomId: roomId
+  });
   roomScreen.style.display = 'none';
   gameScreen.style.display = 'block';
 }
 
 // 处理房间更新
-function handleRoomUpdated(room) {
+function handleRoomUpdated(data) {
+  const room = data.room;
   playersUl.innerHTML = '';
   room.players.forEach(player => {
     const li = document.createElement('li');
@@ -129,7 +140,7 @@ function handleGameStarted(data) {
   console.log('=== 游戏开始 ===');
   console.log('游戏数据:', data);
   console.log('玩家列表:', data.players);
-  console.log('地主PlayerId:', data.地主PlayerId);
+  console.log('地主PlayerId:', data.landlordPlayerId);
   console.log('当前玩家索引:', data.currentPlayerIndex);
   
   // 切换到游戏界面
@@ -168,8 +179,8 @@ function handleGameStarted(data) {
   }
   
   // 显示地主标识
-  if (data.地主PlayerId) {
-    console.log('地主ID:', data.地主PlayerId);
+  if (data.landlordPlayerId) {
+    console.log('地主ID:', data.landlordPlayerId);
     // 隐藏所有地主标识
     document.getElementById('top-player-landlord').classList.remove('show');
     document.getElementById('left-player-landlord').classList.remove('show');
@@ -179,15 +190,15 @@ function handleGameStarted(data) {
     const bottomPlayer = data.players.find(p => p.name === playerName);
     const otherPlayers = data.players.filter(p => p.name !== playerName);
     
-    if (otherPlayers.length >= 1 && otherPlayers[0].id === data.地主PlayerId) {
+    if (otherPlayers.length >= 1 && otherPlayers[0].id === data.landlordPlayerId) {
       document.getElementById('top-player-landlord').textContent = '地主';
       document.getElementById('top-player-landlord').classList.add('show');
       console.log(`顶部玩家 ${otherPlayers[0].name} 是地主`);
-    } else if (otherPlayers.length >= 2 && otherPlayers[1].id === data.地主PlayerId) {
+    } else if (otherPlayers.length >= 2 && otherPlayers[1].id === data.landlordPlayerId) {
       document.getElementById('left-player-landlord').textContent = '地主';
       document.getElementById('left-player-landlord').classList.add('show');
       console.log(`左侧玩家 ${otherPlayers[1].name} 是地主`);
-    } else if (bottomPlayer && bottomPlayer.id === data.地主PlayerId) {
+    } else if (bottomPlayer && bottomPlayer.id === data.landlordPlayerId) {
       document.getElementById('bottom-player-landlord').textContent = '地主';
       document.getElementById('bottom-player-landlord').classList.add('show');
       console.log(`自己是地主`);
@@ -204,8 +215,8 @@ function handleGameStarted(data) {
   renderCards(bottomPlayerCards, myCards, true);
   
   // 显示地主牌
-  console.log('地主牌:', data.地主Cards);
-  renderCards(landlordCardsContainer, data.地主Cards, false);
+  console.log('地主牌:', data.landlordCards);
+  renderCards(landlordCardsContainer, data.landlordCards, false);
   
   // 显示其他玩家的牌（背面）
   console.log('显示其他玩家的牌（背面）');
@@ -389,7 +400,10 @@ function playCards() {
   
   setTimeout(() => {
     console.log('发送出牌请求到服务器');
-    socket.emit('playCards', roomId, selectedCards);
+    socket.emit('playCards', {
+      roomId: roomId,
+      cards: selectedCards
+    });
     // 暂时不清空选中的牌，等待服务器响应
     console.log('出牌请求已发送，等待服务器响应');
   }, 500);
@@ -415,7 +429,9 @@ function pass() {
   
   // 发送不出牌请求到服务器
   console.log('发送不出牌请求到服务器');
-  socket.emit('pass', roomId);
+  socket.emit('pass', {
+    roomId: roomId
+  });
   
   console.log('=== 不出牌函数完成 ===');
 }
@@ -428,6 +444,7 @@ function handleCardsPlayed(data) {
   console.log('出牌:', data.cards);
   console.log('当前玩家索引:', data.currentPlayerIndex);
   console.log('游戏状态:', data.gameStatus);
+  console.log('倍数:', data.multiplier);
   
   // 只有当cards不为空时才更新出牌区域
   if (data.cards && data.cards.length > 0) {
@@ -492,7 +509,7 @@ function handleCardsPlayed(data) {
     console.log('游戏结束，赢家ID:', data.winnerId);
     // 添加游戏结束动画
     setTimeout(() => {
-      gameEndAnimation(data.winnerId === socket.id, data.scores, data.底分, data.倍数);
+      gameEndAnimation(data.winnerId === socket.id, data.scores, data.baseScore, data.multiplier);
     }, 1000);
   }
   
@@ -547,7 +564,10 @@ function gameEndAnimation(isWinner, scores, 底分, 倍数) {
 
 // 叫分函数
 function callScore(score) {
-  socket.emit('call地主', roomId, score);
+  socket.emit('callLandlord', {
+    roomId: roomId,
+    score: score
+  });
 }
 
 // 处理叫地主状态更新
@@ -612,12 +632,12 @@ function showGameMessage(message, type = 'info') {
   }, 3000);
 }
 
-function handlePlayCardsFailed(message) {
+function handlePlayCardsFailed(data) {
   console.log('=== 出牌失败 ===');
-  console.log('失败原因:', message);
+  console.log('失败原因:', data.message);
   
   // 显示错误消息
-  showGameMessage(message, 'error');
+  showGameMessage(data.message, 'error');
   
   // 恢复牌的显示状态
   console.log('恢复牌的显示状态');

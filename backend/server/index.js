@@ -30,7 +30,8 @@ io.on('connection', (socket) => {
   console.log('新玩家连接:', socket.id);
   
   // 加入房间
-  socket.on('joinRoom', (roomId, playerName) => {
+  socket.on('joinRoom', (data) => {
+    const { roomId, playerName } = data;
     if (!rooms.has(roomId)) {
       rooms.set(roomId, {
         id: roomId,
@@ -52,12 +53,19 @@ io.on('connection', (socket) => {
     
     socket.join(roomId);
     
-    io.to(roomId).emit('roomUpdated', room);
+    io.to(roomId).emit('roomUpdated', {
+      room: {
+        id: room.id,
+        players: room.players.map(p => ({ id: p.id, name: p.name })),
+        status: room.status
+      }
+    });
     console.log(`${playerName}加入房间${roomId}`);
   });
   
   // 离开房间
-  socket.on('leaveRoom', (roomId) => {
+  socket.on('leaveRoom', (data) => {
+    const { roomId } = data;
     const player = players.get(socket.id);
     if (player) {
       const room = rooms.get(roomId);
@@ -67,7 +75,13 @@ io.on('connection', (socket) => {
           rooms.delete(roomId);
           games.delete(roomId);
         } else {
-          io.to(roomId).emit('roomUpdated', room);
+          io.to(roomId).emit('roomUpdated', {
+            room: {
+              id: room.id,
+              players: room.players.map(p => ({ id: p.id, name: p.name })),
+              status: room.status
+            }
+          });
         }
       }
       players.delete(socket.id);
@@ -77,7 +91,8 @@ io.on('connection', (socket) => {
   });
   
   // 开始游戏
-  socket.on('startGame', (roomId) => {
+  socket.on('startGame', (data) => {
+    const { roomId } = data;
     const room = rooms.get(roomId);
     if (room && room.players.length >= 3) {
       room.status = 'calling';
@@ -93,14 +108,15 @@ io.on('connection', (socket) => {
         highestScore: game.叫牌状态.highestScore,
         highestBidder: game.叫牌状态.highestBidder,
         gameStatus: game.status,
-        players: game.players
+        players: game.players.map(p => ({ id: p.id, name: p.name }))
       });
       console.log(`房间${roomId}开始叫分`);
     }
   });
   
   // 叫地主
-  socket.on('call地主', (roomId, score) => {
+  socket.on('callLandlord', (data) => {
+    const { roomId, score } = data;
     const game = games.get(roomId);
     if (game) {
       const success = game.call地主(socket.id, score);
@@ -110,16 +126,24 @@ io.on('connection', (socket) => {
           highestScore: game.叫牌状态.highestScore,
           highestBidder: game.叫牌状态.highestBidder,
           gameStatus: game.status,
-          players: game.players
+          players: game.players.map(p => ({ id: p.id, name: p.name }))
         });
         
         // 检查游戏是否进入 playing 状态
         if (game.status === 'playing') {
           io.to(roomId).emit('gameStarted', {
-            room: rooms.get(roomId),
-            players: game.players,
-            地主Cards: game.地主Cards,
-            地主PlayerId: game.地主PlayerId,
+            room: {
+              id: rooms.get(roomId).id,
+              players: rooms.get(roomId).players.map(p => ({ id: p.id, name: p.name })),
+              status: rooms.get(roomId).status
+            },
+            players: game.players.map(p => ({
+              id: p.id,
+              name: p.name,
+              cards: p.cards
+            })),
+            landlordCards: game.地主Cards,
+            landlordPlayerId: game.地主PlayerId,
             currentPlayerIndex: game.currentPlayerIndex
           });
         }
@@ -128,7 +152,8 @@ io.on('connection', (socket) => {
   });
   
   // 出牌
-  socket.on('playCards', (roomId, cards) => {
+  socket.on('playCards', (data) => {
+    const { roomId, cards } = data;
     const game = games.get(roomId);
     if (game) {
       const success = game.playCards(socket.id, cards);
@@ -136,10 +161,14 @@ io.on('connection', (socket) => {
         io.to(roomId).emit('cardsPlayed', {
           playerId: socket.id,
           cards,
-          players: game.players,
+          players: game.players.map(p => ({
+            id: p.id,
+            name: p.name,
+            cards: p.cards
+          })),
           currentPlayerIndex: game.currentPlayerIndex,
           gameStatus: game.status,
-          倍数: game.倍数
+          multiplier: game.倍数
         });
         
         // 检查游戏是否结束
@@ -148,18 +177,21 @@ io.on('connection', (socket) => {
           io.to(roomId).emit('gameEnded', {
             winnerId: socket.id,
             scores: scores,
-            底分: game.底分,
-            倍数: game.倍数
+            baseScore: game.底分,
+            multiplier: game.倍数
           });
         }
       } else {
-        socket.emit('playCardsFailed', '出牌无效');
+        socket.emit('playCardsFailed', {
+          message: '出牌无效'
+        });
       }
     }
   });
   
   // 不出牌
-  socket.on('pass', (roomId) => {
+  socket.on('pass', (data) => {
+    const { roomId } = data;
     const game = games.get(roomId);
     if (game) {
       // 检查是否是当前玩家
@@ -171,10 +203,14 @@ io.on('connection', (socket) => {
         io.to(roomId).emit('cardsPlayed', {
           playerId: socket.id,
           cards: [],
-          players: game.players,
+          players: game.players.map(p => ({
+            id: p.id,
+            name: p.name,
+            cards: p.cards
+          })),
           currentPlayerIndex: game.currentPlayerIndex,
           gameStatus: game.status,
-          倍数: game.倍数
+          multiplier: game.倍数
         });
       }
     }

@@ -65,3 +65,77 @@
  1. 游戏界面采用图形化界面，包括游戏房间、玩家界面、牌组界面等。
  2. 玩家界面包括玩家信息、牌组、出牌按钮等。
  3. 游戏房间界面包括游戏房间列表、创建房间按钮、加入房间按钮等。
+
+## 通讯协议
+
+### 1. 协议概述
+
+本通讯协议基于WebSocket（Socket.IO）实现，使用JSON格式进行数据传输。协议定义了客户端与服务器之间的所有交互事件和数据格式。
+
+### 2. 事件分类
+
+#### 2.1 客户端发送的事件
+
+| 事件名 | 描述 | JSON格式 |
+|-------|------|---------|
+| `joinRoom` | 加入房间 | `{"roomId": "string", "playerName": "string"}` |
+| `leaveRoom` | 离开房间 | `{"roomId": "string"}` |
+| `startGame` | 开始游戏 | `{"roomId": "string"}` |
+| `callLandlord` | 叫地主 | `{"roomId": "string", "score": number}` |
+| `playCards` | 出牌 | `{"roomId": "string", "cards": [{"suit": "string", "rank": "string", "value": number}]}` |
+| `pass` | 不出牌 | `{"roomId": "string"}` |
+
+#### 2.2 服务器发送的事件
+
+| 事件名 | 描述 | JSON格式 |
+|-------|------|---------|
+| `roomUpdated` | 房间更新 | `{"room": {"id": "string", "players": [{"id": "string", "name": "string"}], "status": "string"}}` |
+| `gameStarted` | 游戏开始 | `{"room": {"id": "string", "players": [{"id": "string", "name": "string"}], "status": "string"}, "players": [{"id": "string", "name": "string", "cards": [{"suit": "string", "rank": "string", "value": number}]}], "landlordCards": [{"suit": "string", "rank": "string", "value": number}], "landlordPlayerId": "string", "currentPlayerIndex": number}` |
+| `callingUpdated` | 叫地主状态更新 | `{"currentCallerIndex": number, "highestScore": number, "highestBidder": "string", "gameStatus": "string", "players": [{"id": "string", "name": "string"}]}` |
+| `cardsPlayed` | 出牌 | `{"playerId": "string", "cards": [{"suit": "string", "rank": "string", "value": number}], "players": [{"id": "string", "name": "string", "cards": [{"suit": "string", "rank": "string", "value": number}]}], "currentPlayerIndex": number, "gameStatus": "string", "multiplier": number}` |
+| `gameEnded` | 游戏结束 | `{"winnerId": "string", "scores": {"playerId": number}, "baseScore": number, "multiplier": number}` |
+| `playCardsFailed` | 出牌失败 | `{"message": "string"}` |
+
+### 3. 数据结构定义
+
+#### 3.1 玩家对象 (Player)
+
+```json
+{
+  "id": "string",       // 玩家唯一标识
+  "name": "string",     // 玩家名称
+  "roomId": "string",   // 房间ID（仅客户端使用）
+  "cards": [             // 玩家手牌
+    {
+      "suit": "string",  // 花色（♠♥♦♣）
+      "rank": "string",  // 牌面（A,2,3,...,K）
+      "value": number     // 牌值（用于比较大小）
+    }
+  ]
+}
+```
+
+#### 3.2 房间对象 (Room)
+
+```json
+{
+  "id": "string",       // 房间ID
+  "players": [           // 房间内玩家
+    {
+      "id": "string",   // 玩家唯一标识
+      "name": "string"  // 玩家名称
+    }
+  ],
+  "status": "string"     // 房间状态（waiting, calling, playing）
+}
+```
+
+#### 3.3 卡牌对象 (Card)
+
+```json
+{
+  "suit": "string",      // 花色（♠♥♦♣）
+  "rank": "string",      // 牌面（A,2,3,...,K）
+  "value": number         // 牌值（用于比较大小）
+}
+```
