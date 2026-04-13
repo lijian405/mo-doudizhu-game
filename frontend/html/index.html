@@ -43,27 +43,41 @@
 
     <!-- 游戏房间界面 -->
     <div id="room-screen" style="display: none;">
-      <h2>房间: <span id="current-room-id"></span></h2>
-      <div id="players-list">
-        <h3>玩家列表</h3>
-        <ul id="players-ul"></ul>
+      <div class="room-container">
+        <div class="room-header">
+          <h2>房间: <span id="current-room-id"></span></h2>
+          <p class="room-subtitle">等待其他玩家加入...</p>
+        </div>
+        <div class="room-content">
+          <div id="players-list">
+            <h3>玩家列表</h3>
+            <ul id="players-ul"></ul>
+          </div>
+        </div>
+        <div class="room-buttons">
+          <button id="start-game-btn">开始游戏</button>
+          <button id="leave-room-btn">离开房间</button>
+        </div>
       </div>
-      <button id="start-game-btn">开始游戏</button>
-      <button id="leave-room-btn">离开房间</button>
     </div>
 
     <!-- 叫分界面 -->
     <div id="calling-screen" style="display: none;">
-      <h2>叫分阶段</h2>
-      <div id="calling-info">
-        <p>当前叫分玩家: <span id="current-caller"></span></p>
-        <p>最高叫分: <span id="highest-score">0</span></p>
-      </div>
-      <div class="calling-buttons">
-        <button id="call-1-btn">1分</button>
-        <button id="call-2-btn">2分</button>
-        <button id="call-3-btn">3分</button>
-        <button id="call-pass-btn">不叫</button>
+      <div class="calling-container">
+        <div class="calling-header">
+          <h2>叫分阶段</h2>
+          <p class="calling-subtitle">轮到您了，请选择叫分</p>
+        </div>
+        <div id="calling-info">
+          <p>当前叫分玩家: <span id="current-caller"></span></p>
+          <p>最高叫分: <span id="highest-score">0</span></p>
+        </div>
+        <div class="calling-buttons">
+          <button id="call-1-btn">1分</button>
+          <button id="call-2-btn">2分</button>
+          <button id="call-3-btn">3分</button>
+          <button id="call-pass-btn">不叫</button>
+        </div>
       </div>
     </div>
 
