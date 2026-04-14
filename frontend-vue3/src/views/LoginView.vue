@@ -49,6 +49,7 @@
 
       <div class="login-footer">
         <p>© 2026 联机斗地主 - AI时代的游戏体验</p>
+        <RouterLink class="admin-entry" to="/admin/login">管理后台</RouterLink>
       </div>
     </div>
 
@@ -112,7 +113,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, RouterLink } from 'vue-router'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useRoomStore } from '@/stores/roomStore'
 import { useSocket } from '@/composables/useSocket'
@@ -438,6 +439,21 @@ onUnmounted(() => {
   margin-top: 30px;
   color: #999;
   font-size: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-entry {
+  font-size: 0.75rem;
+  color: #6c757d;
+  text-decoration: none;
+
+  &:hover {
+    color: #495057;
+    text-decoration: underline;
+  }
 }
 
 /* 房间列表 */
