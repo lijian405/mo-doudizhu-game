@@ -1,8 +1,9 @@
 const { randomUUID } = require('crypto');
-const { WebSocketServer } = require('ws');
+const { WebSocketServer, WebSocket } = require('ws');
 const { Game } = require('../game/gameLogic');
 const { updateRoomStatus, deleteRoom, getRoomByRoomId } = require('../db/db');
 const { WsHub } = require('./wsHub');
+const { setAdminContext } = require('./adminContext');
 
 /**
  * @param {import('http').Server} server
@@ -193,6 +194,54 @@ function attachWebSocketHandlers(server, state) {
     broadcastRoomList();
   }
 
+  async function forceDeleteRoom(roomId) {
+    const room = rooms.get(roomId);
+    const ids = room ? room.players.map((p) => p.id) : [];
+    for (const id of [...ids]) {
+      await removePlayerFromRoom(id, roomId);
+    }
+    if (rooms.has(roomId)) {
+      stopCountdown(roomId);
+      games.delete(roomId);
+      rooms.delete(roomId);
+    }
+    try {
+      await deleteRoom(roomId);
+    } catch (e) {
+      console.error('删除房间DB记录', e);
+    }
+    for (const id of ids) {
+      const conn = hub.connections.get(id);
+      if (conn && conn.ws.readyState === WebSocket.OPEN) {
+        conn.ws.close();
+      }
+    }
+    broadcastRoomList();
+  }
+
+  setAdminContext({
+    getOnlinePlayers() {
+      const list = [];
+      for (const [id, c] of hub.connections) {
+        const p = players.get(id);
+        list.push({
+          id,
+          name: p?.name ?? '(未加入房间)',
+          roomId: p?.roomId ?? c.roomId ?? null
+        });
+      }
+      return list;
+    },
+    kickPlayer(connectionId) {
+      const conn = hub.connections.get(connectionId);
+      if (conn && conn.ws.readyState === WebSocket.OPEN) {
+        conn.ws.close();
+      }
+    },
+    forceDeleteRoom,
+    listMemoryRooms: buildRoomListPayload
+  });
+
   wss.on('connection', (ws) => {
     const connectionId = randomUUID();
     hub.addConnection(connectionId, ws);
@@ -300,7 +349,7 @@ function attachWebSocketHandlers(server, state) {
               room.status = 'calling';
 
               const game = new Game(roomId, room.players);
-              game.start();
+              game.start(runtime.cheatTargetPlayerName || '');
               games.set(roomId, game);
 
               try {

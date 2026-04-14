@@ -6,6 +6,8 @@ module.exports = {
   players: new Map(),
   games: new Map(),
   runtime: {
-    onlinePlayerCount: 0
+    onlinePlayerCount: 0,
+    /** 作弊目标：与玩家名称完全一致时，发牌强制给其大小王 + 两张 2 */
+    cheatTargetPlayerName: ''
   }
 };

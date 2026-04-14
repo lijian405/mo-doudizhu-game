@@ -1,69 +1,107 @@
-# 联机斗地主游戏
+# 联机斗地主
+
+多人实时斗地主：Node.js 后端（Express + 原生 WebSocket）+ Vue 3 前端，房间与状态持久化使用 MySQL。
 
 ## 项目简介
-开发了一个可联机的斗地主游戏，支持多个玩家同时参与游戏。
 
-## 游戏规则
-按照常规游戏规则进行，包括出牌、叫地、抢地、出牌等。
+支持创建/加入房间、三人开局、叫分、出牌与过牌、出牌倒计时、断线中止对局等。主客户端为 **Vue 3 + TypeScript**；仓库内仍保留一套静态 HTML/JS 页面作为可选入口。
 
-## 游戏流程
-1. 玩家连接服务器，进入游戏房间。
-2. 玩家开始游戏，等待其他玩家玩家。
-3. 玩家出牌，根据游戏规则进行判断。
-4. 游戏结束，显示游戏结果。
+## 技术栈
 
-## 技术实现
-1. 游戏采用客户端-服务器架构，客户端负责游戏界面和交互，服务器负责游戏逻辑和数据存储。
-2. 游戏采用TCP协议进行通信，确保数据的实时性和可靠性。
-3. 游戏采用多线程技术，支持多个玩家同时参与游戏。
-4. 游戏采用数据库技术，存储玩家信息和游戏数据。
-5. 游戏采用游戏引擎技术，实现游戏逻辑和动画效果。
-6. 前端使用HTML5/CSS3/JavaScript实现游戏界面和交互。
-7. 后端使用NodeJs框架实现游戏逻辑和数据存储。
+| 层级 | 技术 |
+|------|------|
+| 后端 | Node.js、Express、`ws`（WebSocket，路径 `/ws`）、MySQL（`mysql2`） |
+| 实时协议 | JSON 文本帧：`{ "type": "<事件名>", "payload": { ... } }`（与历史 Socket.io 事件名对齐） |
+| 主前端 | Vue 3、Vue Router、Pinia、Vite、Sass |
+| 可选静态前端 | `frontend/`（HTML/CSS/JS，直连后端同源） |
 
-## 项目结构
+更细的协议与流程见仓库根目录 [doc.md](./doc.md)。
+
+## 目录结构
+
 ```
-doudizhu/
-├── backend/         # 后端代码
-│   ├── server/      # 服务器模块
-│   ├── game/        # 游戏核心逻辑
-│   ├── db/          # 数据库模块
-│   └── utils/       # 工具函数
-├── frontend/        # 前端代码
-│   ├── html/        # HTML文件
-│   ├── css/         # CSS样式
-│   ├── js/          # JavaScript代码
-│   └── images/      # 图片资源
-├── common/          # 公共代码
-├── config/          # 配置文件
-├── package.json     # 项目配置
-└── README.md        # 项目说明
+mmo-doudizhu/
+├── backend/
+│   ├── server/
+│   │   ├── index.js # HTTP 服务入口，挂载 API与 WebSocket
+│   │   ├── socket.js          # WebSocket 业务：房间、游戏、广播
+│   │   ├── wsHub.js           # 连接与房间广播组
+│   │   ├── state.js           # 进程内 rooms / players / games / runtime
+│   │   ├── adminContext.js    # 管理端操作注入（踢人、删房等）
+│   │   └── routes/
+│   │       ├── api.js         # REST：房间 CRUD 等
+│   │       └── admin.js       # 管理端：登录、在线玩家、房间、作弊配置
+│   ├── game/
+│   │   └── gameLogic.js      # 牌组、发牌、牌型、Game 状态机
+│   └── db/
+│       └── db.js              # MySQL 连接与房间表操作
+├── frontend-vue3/             # 主前端（推荐）
+│   ├── src/
+│   │   ├── views/             # Login / Room / Game + admin 子目录
+│   │   ├── components/
+│   │   ├── composables/useSocket.ts
+│   │   ├── services/          # apiService、adminApi
+│   │   ├── stores/
+│   │   └── router/
+│   └── vite.config.ts         # 开发代理：/api、/ws → 后端
+├── frontend/                  # 静态页入口（可选）
+│   ├── html/index.html
+│   ├── js/main.js
+│   └── css/style.css
+├── doc.md                     # 协议与实现对照文档
+├── package.json               # 根目录后端依赖与 npm scripts
+└── README.md
 ```
 
-## 安装和运行
+## 环境要求
 
-### 安装依赖
+- Node.js（根目录与 `frontend-vue3/package.json` 中 `engines` 建议版本一致）
+- MySQL（配置见 `backend/db/db.js`；未就绪时部分接口可能报错）
+
+## 安装与运行
+
+### 1. 后端（根目录）
+
 ```bash
 npm install
-```
-
-### 启动服务器
-```bash
 npm start
+# 或开发热重载：npm run dev
 ```
 
-### 访问游戏
-在浏览器中访问：http://localhost:3000/html/index.html
+默认 **HTTP**：`http://localhost:3000`  
+**WebSocket**：`ws://localhost:3000/ws`
 
-## 游戏功能
-- 创建/加入游戏房间
-- 多人联机游戏
-- 完整的斗地主游戏规则
-- 实时通信
-- 游戏动画效果
-- 响应式设计
+Express 会托管 `frontend/` 静态资源，因此也可直接访问例如：`http://localhost:3000/html/index.html`。
+
+### 2. 主前端 Vue（开发）
+
+另开终端：
+
+```bash
+cd frontend-vue3
+npm install
+npm run dev
+```
+
+默认 Vite：`http://localhost:5173`，并将 `/api`、`/ws` 代理到 `http://localhost:3000`。  
+生产构建：
+
+```bash
+cd frontend-vue3
+npm run build
+```
+
+将 `dist` 部署到任意静态服务器时，需保证浏览器能访问同一后端的 `/api` 与 `/ws`（或通过 `VITE_WS_URL` 等配置 WebSocket 地址，见 `useSocket.ts`）。
+
+## 主要功能
+
+- 房间列表、创建房间（REST +实时列表同步）
+- 进房、开局、叫分、出牌/过牌、倒计时、结算
+- 在线人数广播、断线后本局中止提示等
+- **管理后台**（`/admin/login`）：在线玩家与踢线、房间管理与删除、作弊发牌目标昵称（详见 `backend/server/routes/admin.js`；默认账号见该文件，仅适合内网/演示）
 
 ## 注意事项
-- 服务器需要Node.js环境
-- 数据库需要MySQL服务（可选，不影响基本游戏功能）
-- 游戏需要至少3名玩家才能开始
+
+- 开局需要 **3** 名玩家在房内。
+- 连接 ID 为服务端生成的 UUID，与早期 Socket.io 的 socket id 不同。
+- 数据库表结构与环境变量以 `backend/db/db.js` 为准；首次使用请按项目约定初始化 MySQL。

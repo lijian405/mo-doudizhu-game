@@ -3,6 +3,7 @@ const http = require('http');
 const cors = require('cors');
 const { initDatabase } = require('../db/db');
 const apiRouter = require('./routes/api');
+const adminRouter = require('./routes/admin');
 const state = require('./state');
 const { attachWebSocketHandlers } = require('./socket');
 
@@ -12,6 +13,7 @@ const server = http.createServer(app);
 app.use(cors());
 app.use(express.static('frontend'));
 app.use(express.json());
+app.use('/api/admin', adminRouter);
 app.use('/api', apiRouter);
 
 initDatabase();

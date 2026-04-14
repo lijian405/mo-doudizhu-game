@@ -50,27 +50,69 @@ function shuffleDeck(deck) {
   return deck;
 }
 
-// 发牌
-function dealCards(players) {
-  const deck = shuffleDeck(generateDeck());
-  const 地主Cards = deck.splice(0, 3);
-  
-  // 先清空玩家的手牌数组
+// 发牌（cheatTargetName 与某位玩家 name 完全一致时，该玩家获得大王、小王与任意两张 2，其余牌随机）
+function dealCards(players, cheatTargetName) {
   for (const player of players) {
     player.cards = [];
   }
-  
-  // 给三个玩家发牌
-  for (let i = 0; i < deck.length; i++) {
-    players[i % 3].cards.push(deck[i]);
+
+  const trimmed = cheatTargetName && String(cheatTargetName).trim();
+  const targetIdx = trimmed ? players.findIndex((p) => p.name === trimmed) : -1;
+
+  if (targetIdx < 0) {
+    const deck = shuffleDeck(generateDeck());
+    const 地主Cards = deck.splice(0, 3);
+    for (let i = 0; i < deck.length; i++) {
+      players[i % 3].cards.push(deck[i]);
+    }
+    for (const player of players) {
+      player.cards.sort((a, b) => b.value - a.value);
+      player.cardCount = player.cards.length;
+    }
+    return { players, 地主Cards };
   }
-  
-  // 对每个玩家的牌进行排序并设置牌数
+
+  const deck = generateDeck();
+  const rigged = [];
+  const takeOne = (pred) => {
+    const i = deck.findIndex(pred);
+    if (i === -1) return false;
+    rigged.push(deck.splice(i, 1)[0]);
+    return true;
+  };
+  takeOne((c) => c.suit === 'JOKER' && c.rank === '大王');
+  takeOne((c) => c.suit === 'JOKER' && c.rank === '小王');
+  let foundTwos = 0;
+  for (let t = 0; t < deck.length && foundTwos < 2; ) {
+    const c = deck[t];
+    if (c.rank === '2') {
+      rigged.push(deck.splice(t, 1)[0]);
+      foundTwos++;
+    } else {
+      t++;
+    }
+  }
+
+  if (rigged.length < 4) {
+    return dealCards(players, null);
+  }
+
+  shuffleDeck(deck);
+  const 地主Cards = deck.splice(0, 3);
+  const rest = deck;
+  const need = [17, 17, 17];
+  need[targetIdx] = 13;
+  let i = 0;
+  for (let p = 0; p < 3; p++) {
+    while (players[p].cards.length < need[p] && i < rest.length) {
+      players[p].cards.push(rest[i++]);
+    }
+  }
+  players[targetIdx].cards.push(...rigged);
   for (const player of players) {
     player.cards.sort((a, b) => b.value - a.value);
     player.cardCount = player.cards.length;
   }
-  
   return { players, 地主Cards };
 }
 
@@ -254,10 +296,15 @@ class Game {
     this.春天 = false;
     this.countdown = 30; // 默认倒计时30秒
     this.countdownTimer = null;
+    /** @type {string | null} 重开发牌时沿用 */
+    this._cheatTargetName = null;
   }
-  
-  start() {
-    const result = dealCards(this.players);
+
+  start(cheatTargetName) {
+    if (cheatTargetName !== undefined) {
+      this._cheatTargetName = cheatTargetName && String(cheatTargetName).trim() ? cheatTargetName : null;
+    }
+    const result = dealCards(this.players, this._cheatTargetName);
     this.players = result.players;
     this.地主Cards = result.地主Cards;
     this.status = 'calling';
@@ -295,8 +342,7 @@ class Game {
         this.currentPlayerIndex = this.players.findIndex(p => p.id === this.地主PlayerId);
         this.status = 'playing';
       } else {
-        // 重新发牌
-        this.start();
+        this.start(undefined);
       }
     }
     
