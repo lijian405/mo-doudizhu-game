@@ -1,10 +1,8 @@
 /**
- * Socket.io 连接管理 Composable
- * 使用单例模式确保全局只有一个Socket连接
+ * 原生 WebSocket（JSON 帧：{ type, payload }），全局单例，事件名与旧 Socket.io 一致
  */
 
-import { ref, onMounted, onUnmounted } from 'vue'
-import { io, Socket } from 'socket.io-client'
+import { ref, shallowRef, onMounted } from 'vue'
 import type {
   ServerToClientEvents,
   ClientToServerEvents,
@@ -14,141 +12,168 @@ import type {
   StartGameData,
   CallLandlordData,
   PlayCardsData,
-  PassData,
-  RoomListItem
+  PassData
 } from '@/types'
 
-const SOCKET_SERVER_URL = 'http://localhost:3000'
+function getWsUrl(): string {
+  const fromEnv = import.meta.env.VITE_WS_URL as string | undefined
+  if (fromEnv) return fromEnv
+  const proto = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  const host = typeof window !== 'undefined' ? window.location.host : 'localhost:5173'
+  return `${proto}//${host}/ws`
+}
 
-// 单例Socket实例
-let socketInstance: Socket<ServerToClientEvents, ClientToServerEvents> | null = null
+const RECONNECT_BASE_MS = 2000
+const RECONNECT_MAX_MS = 30000
 
-export function useSocket() {
-  const socket = ref<Socket<ServerToClientEvents, ClientToServerEvents> | null>(null)
-  const isConnected = ref(false)
-  const connectionError = ref<string | null>(null)
+type ServerEventKey = keyof ServerToClientEvents
+type Listener = (data: unknown) => void
 
-  // 初始化连接
-  const connect = () => {
-    if (socketInstance?.connected) {
-      socket.value = socketInstance
-      isConnected.value = true
+const listeners = new Map<ServerEventKey, Set<Listener>>()
+
+const wsRef = shallowRef<WebSocket | null>(null)
+const isConnected = ref(false)
+const connectionError = ref<string | null>(null)
+
+let reconnectAttempt = 0
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+let manualClose = false
+
+function dispatch(type: string, payload: unknown) {
+  const set = listeners.get(type as ServerEventKey)
+  if (!set) return
+  for (const cb of set) {
+    try {
+      cb(payload)
+    } catch (e) {
+      console.error('WS listener error:', type, e)
+    }
+  }
+}
+
+function scheduleReconnect() {
+  if (reconnectTimer != null || manualClose) return
+  const delay = Math.min(
+    RECONNECT_BASE_MS * Math.pow(2, reconnectAttempt),
+    RECONNECT_MAX_MS
+  )
+  reconnectAttempt++
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null
+    connectInternal()
+  }, delay)
+}
+
+function connectInternal() {
+  if (
+    wsRef.value?.readyState === WebSocket.OPEN ||
+    wsRef.value?.readyState === WebSocket.CONNECTING
+  ) {
+    return
+  }
+
+  const ws = new WebSocket(getWsUrl())
+  wsRef.value = ws
+
+  ws.addEventListener('open', () => {
+    reconnectAttempt = 0
+    isConnected.value = true
+    connectionError.value = null
+    console.log('WebSocket connected')
+  })
+
+  ws.addEventListener('message', (ev) => {
+    let msg: { type?: string; payload?: unknown }
+    try {
+      msg = JSON.parse(ev.data as string)
+    } catch {
       return
     }
+    if (!msg.type || typeof msg.type !== 'string') return
+    dispatch(msg.type, msg.payload ?? {})
+  })
 
-    if (!socketInstance) {
-      socketInstance = io(SOCKET_SERVER_URL, {
-        transports: ['websocket'],
-        autoConnect: true
-      })
-
-      socketInstance.on('connect', () => {
-        console.log('Socket connected:', socketInstance?.id)
-        isConnected.value = true
-        connectionError.value = null
-      })
-
-      socketInstance.on('disconnect', (reason) => {
-        console.log('Socket disconnected:', reason)
-        isConnected.value = false
-      })
-
-      socketInstance.on('connect_error', (error) => {
-        console.error('Socket connection error:', error)
-        connectionError.value = error.message
-        isConnected.value = false
-      })
+  ws.addEventListener('close', () => {
+    isConnected.value = false
+    if (wsRef.value === ws) {
+      wsRef.value = null
     }
-
-    socket.value = socketInstance
-    isConnected.value = socketInstance.connected
-  }
-
-  // 断开连接（不再自动断开，保持socket连接在整个应用生命周期内活跃）
-  const disconnect = () => {
-    // 不再自动断开连接，只在需要时手动断开
-  }
-
-  // 重新连接
-  const reconnect = () => {
-    if (socketInstance) {
-      socketInstance.disconnect()
-      socketInstance = null
+    if (!manualClose) {
+      scheduleReconnect()
     }
-    connect()
+  })
+
+  ws.addEventListener('error', () => {
+    connectionError.value = 'WebSocket error'
+  })
+}
+
+function connect() {
+  manualClose = false
+  connectInternal()
+}
+
+function disconnect() {
+  manualClose = true
+  if (reconnectTimer != null) {
+    clearTimeout(reconnectTimer)
+    reconnectTimer = null
+  }
+  wsRef.value?.close()
+  wsRef.value = null
+  isConnected.value = false
+}
+
+function reconnect() {
+  disconnect()
+  manualClose = false
+  reconnectAttempt = 0
+  connectInternal()
+}
+
+export function useSocket() {
+  const on = <K extends ServerEventKey>(event: K, callback: ServerToClientEvents[K]) => {
+    if (!listeners.has(event)) {
+      listeners.set(event, new Set())
+    }
+    listeners.get(event)!.add(callback as Listener)
   }
 
-  // 事件监听封装
-  const on = <K extends keyof ServerToClientEvents>(
-    event: K,
-    callback: ServerToClientEvents[K]
-  ) => {
-    socket.value?.on(event, callback as any)
-  }
-
-  const off = <K extends keyof ServerToClientEvents>(
-    event: K,
-    callback?: ServerToClientEvents[K]
-  ) => {
+  const off = <K extends ServerEventKey>(event: K, callback?: ServerToClientEvents[K]) => {
+    const set = listeners.get(event)
+    if (!set) return
     if (callback) {
-      socket.value?.off(event, callback as any)
+      set.delete(callback as Listener)
     } else {
-      socket.value?.off(event)
+      set.clear()
     }
   }
 
-  // 发送事件封装
   const emit = <K extends keyof ClientToServerEvents>(
     event: K,
     ...args: Parameters<ClientToServerEvents[K]>
   ) => {
-    socket.value?.emit(event, ...args)
+    const w = wsRef.value
+    if (!w || w.readyState !== WebSocket.OPEN) return
+    const payload = args.length > 0 ? args[0] : {}
+    w.send(JSON.stringify({ type: event, payload }))
   }
 
-  // 游戏相关方法
-  const joinRoom = (data: JoinRoomData) => {
-    emit('joinRoom', data)
-  }
-
-  const createRoom = (data: CreateRoomData) => {
-    emit('createRoom', data)
-  }
-
-  const leaveRoom = (data: LeaveRoomData) => {
-    emit('leaveRoom', data)
-  }
-
-  const startGame = (data: StartGameData) => {
-    emit('startGame', data)
-  }
-
-  const callLandlord = (data: CallLandlordData) => {
-    emit('callLandlord', data)
-  }
-
-  const playCards = (data: PlayCardsData) => {
-    emit('playCards', data)
-  }
-
-  const pass = (data: PassData) => {
-    emit('pass', data)
-  }
-
-  // 获取房间列表 (WebSocket)
-  const getRooms = () => {
-    emit('getRooms')
-  }
+  const joinRoom = (data: JoinRoomData) => emit('joinRoom', data)
+  const createRoom = (data: CreateRoomData) => emit('createRoom', data)
+  const leaveRoom = (data: LeaveRoomData) => emit('leaveRoom', data)
+  const startGame = (data: StartGameData) => emit('startGame', data)
+  const callLandlord = (data: CallLandlordData) => emit('callLandlord', data)
+  const playCards = (data: PlayCardsData) => emit('playCards', data)
+  const pass = (data: PassData) => emit('pass', data)
+  const getRooms = () => emit('getRooms')
 
   onMounted(() => {
     connect()
   })
 
-  onUnmounted(() => {
-    // 不再断开连接，保持socket连接活跃
-  })
-
   return {
-    socket,
+    socket: wsRef,
     isConnected,
     connectionError,
     connect,

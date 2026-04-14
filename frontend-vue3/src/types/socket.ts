@@ -1,5 +1,5 @@
 /**
- * Socket.io 事件类型定义
+ * 实时通信事件类型（WebSocket JSON 帧：{ type, payload }，type 与下列名称一致）
  */
 
 import type { Card } from './card'
@@ -141,6 +141,7 @@ export const SocketEvents = {
 
   // 服务器发送
   ROOM_UPDATED: 'roomUpdated',
+  JOIN_ROOM_FAILED: 'joinRoomFailed',
   GAME_STARTED: 'gameStarted',
   CALLING_UPDATED: 'callingUpdated',
   CARDS_PLAYED: 'cardsPlayed',
@@ -156,8 +157,13 @@ export const SocketEvents = {
 } as const
 
 // Socket 事件类型映射
+export interface JoinRoomFailedData {
+  message: string
+}
+
 export interface ServerToClientEvents {
   roomUpdated: (data: RoomUpdatedData) => void
+  joinRoomFailed: (data: JoinRoomFailedData) => void
   gameStarted: (data: GameStartedData) => void
   callingUpdated: (data: CallingUpdatedData) => void
   cardsPlayed: (data: CardsPlayedData) => void

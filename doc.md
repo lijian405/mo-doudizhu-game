@@ -123,7 +123,7 @@
 
 ### 1. 协议概述
 
-本通讯协议基于WebSocket（Socket.IO）实现，使用JSON格式进行数据传输。协议定义了客户端与服务器之间的所有交互事件和数据格式。
+本通讯协议基于**原生 WebSocket**（Node `ws` 库，路径 `/ws`）实现。每条消息为 UTF-8 文本，JSON 对象：`{"type":"<事件名>","payload":{...}}`（`type` 与原先 Socket.io 事件名一致）。下文表格中的「JSON格式」指 **`payload` 对象** 的内容。
 
 ### 2. 事件分类
 
@@ -226,9 +226,9 @@
 
 | 层 | 技术 |
 |----|------|
-| 后端 | Express + **Socket.io**，房间 /持久化用 MySQL（`backend/db/db.js`） |
+| 后端 | Express + **`ws`（WebSocketServer，`/ws`）**，房间 / 持久化用 MySQL（`backend/db/db.js`） |
 | 游戏逻辑 | `backend/game/gameLogic.js`（`Game` 类 + 牌型 / 比大小） |
-| 前端 | Vue 3 + Pinia，`frontend-vue3/src/composables/useSocket.ts` 单例连 `http://localhost:3000` |
+| 前端 | Vue 3 + Pinia，`frontend-vue3/src/composables/useSocket.ts` 单例连接 `ws(s)://<host>/ws`（开发环境经 Vite 将 `/ws` 代理到后端；生产可设 `VITE_WS_URL`） |
 
 - **HTTP**：创建 / 查询房间列表等（例如 `POST /api/rooms`）。
 - **WebSocket**：进房、开局、叫分、出牌、过牌、房间广播、倒计时等。
@@ -239,34 +239,34 @@
 sequenceDiagram
   participant C as 客户端
   participant API as Express REST
-  participant IO as Socket.io
+  participant WSS as WebSocket_ws
   participant G as Game(gameLogic)
 
   C->>API: POST /api/rooms 创建房间
-  C->>IO: joinRoom { roomId, playerName }
-  IO-->>C: roomUpdated / roomListUpdated
-  Note over C,IO: 满 3 人，房主点「开始游戏」
-  C->>IO: startGame { roomId }
-  IO->>G: new Game + start() 发牌
-  IO-->>C: callingStart, gameStarted(calling)
+  C->>WSS: JSON type=joinRoom payload={ roomId, playerName }
+  WSS-->>C: roomUpdated / roomListUpdated
+  Note over C,WSS: 满 3 人，房主点「开始游戏」
+  C->>WSS: type=startGame
+  WSS->>G: new Game + start() 发牌
+  WSS-->>C: callingStart, gameStarted(calling)
   Note over C,G: 轮流 callLandlord
-  C->>IO: callLandlord { roomId, score }
-  IO->>G: call地主()
-  IO-->>C: callingUpdated / gameStarted(playing)
+  C->>WSS: type=callLandlord
+  WSS->>G: call地主()
+  WSS-->>C: callingUpdated / gameStarted(playing)
   Note over C,G: 出牌阶段
-  C->>IO: playCards / pass
-  IO->>G: playCards / 仅切回合
-  IO-->>C: cardsPlayed, countdownUpdated
-  IO-->>C: gameEnded（有人出完牌）
+  C->>WSS: playCards / pass
+  WSS->>G: playCards / 仅切回合
+  WSS-->>C: cardsPlayed, countdownUpdated
+  WSS-->>C: gameEnded（有人出完牌）
 ```
 
-### 3. 后端：`backend/server/socket.js` 中与游戏相关的 Socket 事件
+### 3. 后端：`backend/server/socket.js` 中与游戏相关的 WebSocket 消息
 
-（入口 `backend/server/index.js` 创建 `io` 后调用 `attachSocketHandlers(io, state)`；进程内状态见 `backend/server/state.js`。）
+（入口 `backend/server/index.js` 创建 HTTP `server` 后调用 `attachWebSocketHandlers(server, state)`；进程内状态见 `backend/server/state.js`。连接 ID 为服务端 `randomUUID()`，房间广播经 `backend/server/wsHub.js` 的 `broadcastRoom` / `sendTo` / `broadcastAll`。）
 
 **房间与列表**
 
-- `joinRoom`：查 DB 房间是否存在 → 内存 `rooms` / `players` → `socket.join(roomId)` → `roomUpdated` → `broadcastRoomList` → `roomListUpdated`。
+- `joinRoom`：查 DB 房间是否存在 → 内存 `rooms` / `players` → `hub.setRoom(connectionId, roomId)` → `roomUpdated` → `broadcastRoomList` → `roomListUpdated`。
 - `leaveRoom` / `disconnect`：可能删房、删 `games`、DB `deleteRoom`，并发 `roomDeleted` / `roomUpdated`。
 
 **开局**
@@ -275,7 +275,7 @@ sequenceDiagram
 
 **叫分**
 
-- `callLandlord`：`game.call地主(socket.id, score)`；广播 `callingUpdated`；若进入出牌阶段再发一次 `gameStarted`（带 `gameStarted: true`），并 `startCountdown(roomId)`。
+- `callLandlord`：`game.call地主(connectionId, score)`；广播 `callingUpdated`；若进入出牌阶段再发一次 `gameStarted`（带 `gameStarted: true`），并 `startCountdown(roomId)`。
 
 **出牌 / 过牌**
 
@@ -329,6 +329,6 @@ sequenceDiagram
 
 ### 6. 值得留意的实现细节（读代码时有用）
 
-1. **`createRoom`**：前端 `apiService` 走 **REST**，`useSocket` 里虽有 `createRoom` emit，但当前**服务端没有** `socket.on('createRoom')`，实际以 HTTP 为准。
+1. **`createRoom`**：前端 `apiService` 走 **REST**，`useSocket` 里虽有 `createRoom` 发送，但当前**服务端没有**处理 `type: createRoom`，实际以 HTTP 为准。
 2. **`roomUpdated` 载荷**：服务端发的是 `{ roomId, players }`，`RoomView` 里兼容了 `data.room?.players`。
 3. **`cardsPlayed` 里没有 `playerName`**：后端只发 `playerId`；若界面依赖 `playerName`，需要前端用 `roomStore` 再解析（类型里可能有 `playerName` 可选）。

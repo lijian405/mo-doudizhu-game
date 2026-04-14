@@ -1,5 +1,6 @@
-// 全局变量
+// 全局变量（原生 WebSocket，与后端 `/ws` JSON 协议一致）
 let socket = null;
+let myPlayerId = null;
 let playerName = '';
 let roomId = '';
 let selectedCards = [];
@@ -36,12 +37,60 @@ const call2Btn = document.getElementById('call-2-btn');
 const call3Btn = document.getElementById('call-3-btn');
 const callPassBtn = document.getElementById('call-pass-btn');
 
+function wsSend(type, payload) {
+  if (!socket || socket.readyState !== WebSocket.OPEN) {
+    console.warn('WebSocket 未连接，无法发送:', type);
+    return;
+  }
+  socket.send(JSON.stringify({ type, payload: payload || {} }));
+}
+
 // 初始化
 function init() {
-  // 连接socket.io服务器
-  socket = io('http://localhost:3000');
-  
-  // 事件监听
+  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = window.location.hostname || 'localhost';
+  const port = window.location.port === '' || window.location.port === '80' || window.location.port === '443'
+    ? ''
+    : `:${window.location.port || '3000'}`;
+  const wsUrl = `${proto}//${host}${port}/ws`;
+  socket = new WebSocket(wsUrl);
+
+  socket.addEventListener('message', (ev) => {
+    let msg;
+    try {
+      msg = JSON.parse(ev.data);
+    } catch {
+      return;
+    }
+    if (!msg.type) return;
+    const payload = msg.payload != null ? msg.payload : {};
+    switch (msg.type) {
+      case 'roomUpdated':
+        handleRoomUpdated(payload);
+        break;
+      case 'gameStarted':
+        handleGameStarted(payload);
+        break;
+      case 'callingUpdated':
+        handleCallingUpdated(payload);
+        break;
+      case 'cardsPlayed':
+        handleCardsPlayed(payload);
+        break;
+      case 'gameEnded':
+        handleGameEnded(payload);
+        break;
+      case 'playCardsFailed':
+        handlePlayCardsFailed(payload);
+        break;
+      case 'countdownUpdated':
+        handleCountdownUpdated(payload);
+        break;
+      default:
+        break;
+    }
+  });
+
   joinRoomBtn.addEventListener('click', joinRoom);
   createRoomBtn.addEventListener('click', createRoom);
   leaveRoomBtn.addEventListener('click', leaveRoom);
@@ -52,15 +101,6 @@ function init() {
   call2Btn.addEventListener('click', () => callScore(2));
   call3Btn.addEventListener('click', () => callScore(3));
   callPassBtn.addEventListener('click', () => callScore(0));
-  
-  // 服务器事件
-  socket.on('roomUpdated', handleRoomUpdated);
-  socket.on('gameStarted', handleGameStarted);
-  socket.on('callingUpdated', handleCallingUpdated);
-  socket.on('cardsPlayed', handleCardsPlayed);
-  socket.on('gameEnded', handleGameEnded);
-  socket.on('playCardsFailed', handlePlayCardsFailed);
-  socket.on('countdownUpdated', handleCountdownUpdated);
 }
 
 // 加入房间
@@ -73,7 +113,7 @@ function joinRoom() {
     return;
   }
   
-  socket.emit('joinRoom', {
+  wsSend('joinRoom', {
     roomId: roomId,
     playerName: playerName
   });
@@ -92,7 +132,7 @@ function createRoom() {
   
   // 生成随机房间ID
   roomId = Math.random().toString(36).substr(2, 9);
-  socket.emit('joinRoom', {
+  wsSend('joinRoom', {
     roomId: roomId,
     playerName: playerName
   });
@@ -103,9 +143,10 @@ function createRoom() {
 
 // 离开房间
 function leaveRoom() {
-  socket.emit('leaveRoom', {
+  wsSend('leaveRoom', {
     roomId: roomId
   });
+  myPlayerId = null;
   roomScreen.style.display = 'none';
   gameScreen.style.display = 'none';
   loginScreen.style.display = 'block';
@@ -115,7 +156,7 @@ function leaveRoom() {
 
 // 开始游戏
 function startGame() {
-  socket.emit('startGame', {
+  wsSend('startGame', {
     roomId: roomId
   });
   roomScreen.style.display = 'none';
@@ -124,16 +165,19 @@ function startGame() {
 
 // 处理房间更新
 function handleRoomUpdated(data) {
-  const room = data.room;
+  const list = data.room?.players ?? data.players ?? [];
+  if (playerName) {
+    const me = list.find((p) => p.name === playerName);
+    if (me) myPlayerId = me.id;
+  }
   playersUl.innerHTML = '';
-  room.players.forEach(player => {
+  list.forEach((player) => {
     const li = document.createElement('li');
     li.textContent = player.name;
     playersUl.appendChild(li);
   });
-  
-  // 更新开始游戏按钮状态
-  startGameBtn.disabled = room.players.length < 3;
+
+  startGameBtn.disabled = list.length < 3;
 }
 
 // 处理游戏开始
@@ -410,7 +454,7 @@ function playCards() {
   
   setTimeout(() => {
     console.log('发送出牌请求到服务器');
-    socket.emit('playCards', {
+    wsSend('playCards', {
       roomId: roomId,
       cards: selectedCards
     });
@@ -439,7 +483,7 @@ function pass() {
   
   // 发送不出牌请求到服务器
   console.log('发送不出牌请求到服务器');
-  socket.emit('pass', {
+  wsSend('pass', {
     roomId: roomId
   });
   
@@ -519,7 +563,7 @@ function handleCardsPlayed(data) {
     console.log('游戏结束，赢家ID:', data.winnerId);
     // 添加游戏结束动画
     setTimeout(() => {
-      gameEndAnimation(data.winnerId === socket.id, data.scores, data.baseScore, data.multiplier);
+      gameEndAnimation(data.winnerId === myPlayerId, data.scores, data.baseScore, data.multiplier);
     }, 1000);
   }
   
@@ -550,7 +594,7 @@ function gameEndAnimation(isWinner, scores, 底分, 倍数) {
   // 添加积分信息
   let scoreText = '';
   if (scores && 底分 && 倍数) {
-    scoreText = `<br>底分: ${底分} | 倍数: ${倍数}<br>你的得分: ${scores[socket.id] || 0}`;
+    scoreText = `<br>底分: ${底分} | 倍数: ${倍数}<br>你的得分: ${scores[myPlayerId] || 0}`;
   }
   
   messageElement.innerHTML = message + scoreText;
@@ -574,7 +618,7 @@ function gameEndAnimation(isWinner, scores, 底分, 倍数) {
 
 // 叫分函数
 function callScore(score) {
-  socket.emit('callLandlord', {
+  wsSend('callLandlord', {
     roomId: roomId,
     score: score
   });
@@ -627,7 +671,7 @@ function handleGameEnded(data) {
     }
   }
   
-  gameEndAnimation(data.winnerId === socket.id, data.scores, data.底分, data.倍数);
+  gameEndAnimation(data.winnerId === myPlayerId, data.scores, data.底分, data.倍数);
 }
 
 // 处理出牌失败
