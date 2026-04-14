@@ -3,7 +3,7 @@
  * 处理与后端API的所有HTTP请求
  */
 
-const API_BASE_URL = 'http://localhost:3000/api'
+const API_BASE_URL = '/api'
 
 // 房间相关API
 export const roomApi = {

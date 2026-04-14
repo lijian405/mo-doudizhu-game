@@ -49,7 +49,6 @@
 
       <div class="login-footer">
         <p>© 2026 联机斗地主 - AI时代的游戏体验</p>
-        <RouterLink class="admin-entry" to="/admin/login">管理后台</RouterLink>
       </div>
     </div>
 
