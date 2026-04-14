@@ -71,58 +71,46 @@
 
     <!-- 游戏主界面 -->
     <div class="game-container">
-      <!-- 地主牌 -->
-      <LandlordCards :cards="gameStore.landlordCards" />
+      <!-- 顶部信息条 -->
+      <GameTopBar
+        :base-score="gameStore.baseScore"
+        :multiplier="gameStore.multiplier"
+        :landlord-cards="gameStore.landlordCards"
+        :elapsed-seconds="gameStore.roomTimerSeconds"
+      />
 
-      <!-- 顶部玩家 -->
+      <!-- 左侧玩家 -->
       <PlayerArea
-        v-if="topPlayer"
-        position="top"
-        :player-name="topPlayer.name"
-        :score="playerStore.getPlayerScore(topPlayer.id)"
-        :card-count="gameStore.getPlayerCardCount(topPlayer.id)"
-        :is-current-turn="isPlayerTurn(topPlayer.id)"
-        :is-landlord="topPlayer.id === gameStore.landlordPlayerId"
+        v-if="leftPlayer"
+        position="left"
+        :player-name="leftPlayer.name"
+        :score="playerStore.getPlayerScore(leftPlayer.id)"
+        :card-count="gameStore.getPlayerCardCount(leftPlayer.id)"
+        :is-current-turn="isPlayerTurn(leftPlayer.id)"
+        :is-landlord="leftPlayer.id === gameStore.landlordPlayerId"
         :countdown="gameStore.countdown"
       />
 
-      <!-- 中间区域 -->
-      <div class="middle-area">
-        <!-- 左侧玩家 -->
-        <PlayerArea
-          v-if="leftPlayer"
-          position="left"
-          :player-name="leftPlayer.name"
-          :score="playerStore.getPlayerScore(leftPlayer.id)"
-          :card-count="gameStore.getPlayerCardCount(leftPlayer.id)"
-          :is-current-turn="isPlayerTurn(leftPlayer.id)"
-          :is-landlord="leftPlayer.id === gameStore.landlordPlayerId"
-          :countdown="gameStore.countdown"
-        />
+      <!-- 出牌区域（中间） -->
+      <PlayArea
+        :cards="lastPlayedCards"
+        :last-player-name="lastPlayerName"
+      />
 
-        <!-- 出牌区域 -->
-        <PlayArea
-          :cards="lastPlayedCards"
-          :last-player-name="lastPlayerName"
-        />
-      </div>
+      <!-- 右侧玩家 -->
+      <PlayerArea
+        v-if="rightPlayer"
+        position="right"
+        :player-name="rightPlayer.name"
+        :score="playerStore.getPlayerScore(rightPlayer.id)"
+        :card-count="gameStore.getPlayerCardCount(rightPlayer.id)"
+        :is-current-turn="isPlayerTurn(rightPlayer.id)"
+        :is-landlord="rightPlayer.id === gameStore.landlordPlayerId"
+        :countdown="gameStore.countdown"
+      />
 
       <!-- 底部玩家（自己） -->
       <div class="bottom-area">
-        <PlayerArea
-          position="bottom"
-          :player-name="playerStore.playerName"
-          :score="playerStore.currentScore"
-          :cards="gameStore.myCards"
-          :card-count="gameStore.myCards.length"
-          :is-self="true"
-          :is-current-turn="gameStore.isMyTurn"
-          :is-landlord="gameStore.isLandlord"
-          :countdown="gameStore.countdown"
-          :selected-cards="gameStore.selectedCards"
-          @card-click="handleCardClick"
-        />
-
         <!-- 操作按钮（顺序与常见斗地主 UI：左不出、右出牌） -->
         <div class="action-buttons">
           <button
@@ -142,6 +130,21 @@
             出牌
           </button>
         </div>
+
+        <PlayerArea
+          position="bottom"
+          :player-name="playerStore.playerName"
+          :score="playerStore.currentScore"
+          :cards="gameStore.myCards"
+          :card-count="gameStore.myCards.length"
+          :is-self="true"
+          :is-current-turn="gameStore.isMyTurn"
+          :is-landlord="gameStore.isLandlord"
+          :countdown="gameStore.countdown"
+          :selected-cards="gameStore.selectedCards"
+          :show-turn-hint="(gameStore.gameState?.status ?? '') === 'playing'"
+          @card-click="handleCardClick"
+        />
       </div>
     </div>
   </div>
@@ -156,7 +159,7 @@ import { useGameStore } from '@/stores/gameStore'
 import { useSocket } from '@/composables/useSocket'
 import PlayerArea from '@/components/PlayerArea.vue'
 import PlayArea from '@/components/PlayArea.vue'
-import LandlordCards from '@/components/LandlordCards.vue'
+import GameTopBar from '@/components/GameTopBar.vue'
 import GameMessage from '@/components/GameMessage.vue'
 import type {
   Card,
@@ -166,7 +169,8 @@ import type {
   PlayCardsFailedData,
   CallingUpdatedData,
   GameAbortedData,
-  CallingInfo
+  CallingInfo,
+  RoomTimerUpdatedData
 } from '@/types'
 
 const router = useRouter()
@@ -192,8 +196,8 @@ const myScore = ref(0)
 const currentCallerIndex = ref(0)
 
 // 计算属性
-const topPlayer = computed(() => roomStore.getPlayerByPosition(0))
-const leftPlayer = computed(() => roomStore.getPlayerByPosition(1))
+const leftPlayer = computed(() => roomStore.getPlayerByPosition(0))
+const rightPlayer = computed(() => roomStore.getPlayerByPosition(1))
 
 const lastPlayedCards = computed(() => {
   const lastPlayed = gameStore.playedCards[gameStore.playedCards.length - 1]
@@ -347,6 +351,12 @@ const handleGameStarted = (data: any) => {
     // 更新游戏状态为 playing
     gameStore.updateGameStatus('playing')
     gameStore.updateCurrentPlayer(data.currentPlayerIndex)
+    if (typeof data.baseScore === 'number') {
+      gameStore.updateBaseScore(data.baseScore)
+    }
+    if (typeof data.multiplier === 'number') {
+      gameStore.updateMultiplier(data.multiplier)
+    }
 
     console.log('叫分结束，游戏正式开始')
 
@@ -375,8 +385,8 @@ const handleGameStarted = (data: any) => {
       landlordPlayerId: data.landlordPlayerId,
       landlordCards: data.landlordCards,
       playedCards: [],
-      baseScore: 1,
-      multiplier: 1,
+      baseScore: typeof data.baseScore === 'number' ? data.baseScore : 1,
+      multiplier: typeof data.multiplier === 'number' ? data.multiplier : 1,
       lastPlayedCards: null,
       lastPlayedPlayerId: null
     })
@@ -475,6 +485,7 @@ const handleCardsPlayed = (data: CardsPlayedData) => {
 const handleGameEnded = (data: GameEndedData) => {
   console.log('游戏结束:', data)
   gameStore.setGameResult(data)
+  gameStore.setRoomTimerSeconds(0)
 
   // 更新玩家分值
   Object.entries(data.scores).forEach(([playerId, scoreChange]) => {
@@ -496,8 +507,14 @@ const handlePlayCardsFailed = (data: PlayCardsFailedData) => {
 const handleGameAborted = (data: GameAbortedData) => {
   if (data.roomId !== roomStore.roomId) return
   showToast(data.message, 'info')
+  gameStore.setRoomTimerSeconds(0)
   gameStore.clearGame()
   router.push('/room')
+}
+
+const handleRoomTimerUpdated = (data: RoomTimerUpdatedData) => {
+  if (data.roomId !== roomStore.roomId) return
+  gameStore.setRoomTimerSeconds(data.elapsedSeconds)
 }
 
 onMounted(() => {
@@ -515,6 +532,7 @@ onMounted(() => {
   socket.on('callingUpdated', handleCallingUpdated)
   socket.on('gameStarted', handleGameStarted)
   socket.on('gameAborted', handleGameAborted)
+  socket.on('roomTimerUpdated', handleRoomTimerUpdated)
 })
 
 onUnmounted(() => {
@@ -525,6 +543,7 @@ onUnmounted(() => {
   socket.off('callingUpdated', handleCallingUpdated)
   socket.off('gameStarted', handleGameStarted)
   socket.off('gameAborted', handleGameAborted)
+  socket.off('roomTimerUpdated', handleRoomTimerUpdated)
 })
 </script>
 
@@ -538,31 +557,29 @@ onUnmounted(() => {
 .game-container {
   display: grid;
   grid-template-areas:
-    "landlord landlord landlord"
-    "top top top"
-    "left play play"
+    "info info info"
+    "left play right"
     "bottom bottom bottom";
-  grid-template-columns: 1fr 2fr 1fr;
+  grid-template-columns: 1fr 2.2fr 1fr;
   gap: 20px;
   max-width: 1200px;
   margin: 0 auto;
-}
-
-.landlord-cards {
-  grid-area: landlord;
-  justify-self: center;
-}
-
-.player-area--top {
-  grid-area: top;
 }
 
 .player-area--left {
   grid-area: left;
 }
 
+.player-area--right {
+  grid-area: right;
+}
+
 .play-area {
   grid-area: play;
+}
+
+.game-top-bar {
+  grid-area: info;
 }
 
 .bottom-area {
@@ -571,10 +588,6 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   gap: 20px;
-}
-
-.middle-area {
-  display: contents;
 }
 
 .action-buttons {
@@ -896,14 +909,14 @@ onUnmounted(() => {
 @media (max-width: 768px) {
   .game-container {
     grid-template-areas:
-      "landlord"
-      "top"
+      "info"
       "play"
       "bottom";
     grid-template-columns: 1fr;
   }
 
-  .player-area--left {
+  .player-area--left,
+  .player-area--right {
     display: none;
   }
 }

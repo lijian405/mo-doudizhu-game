@@ -26,6 +26,7 @@ export const useGameStore = defineStore('game', () => {
   const selectedCards = ref<Card[]>([])
   const playedCards = ref<PlayedCards[]>([])
   const countdown = ref<number>(30)
+  const roomTimerSeconds = ref<number>(0)
   const gameResult = ref<GameResult | null>(null)
   const isProcessing = ref(false)
   const errorMessage = ref<string | null>(null)
@@ -72,8 +73,8 @@ export const useGameStore = defineStore('game', () => {
     const otherPlayers = roomStore.otherPlayers
     const index = otherPlayers.findIndex((p: PlayerBase) => p.id === playerId)
 
-    if (index === 0) return 'top'
-    if (index === 1) return 'left'
+    if (index === 0) return 'left'
+    if (index === 1) return 'right'
     return null
   }
 
@@ -165,12 +166,22 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
+  const updateBaseScore = (value: number) => {
+    if (gameState.value) {
+      gameState.value.baseScore = value
+    }
+  }
+
   const setCallingInfo = (info: CallingInfo) => {
     callingInfo.value = info
   }
 
   const setCountdown = (value: number) => {
     countdown.value = value
+  }
+
+  const setRoomTimerSeconds = (value: number) => {
+    roomTimerSeconds.value = Math.max(0, Math.floor(value || 0))
   }
 
   const setGameResult = (result: GameResult) => {
@@ -192,6 +203,7 @@ export const useGameStore = defineStore('game', () => {
     selectedCards.value = []
     playedCards.value = []
     countdown.value = 30
+    roomTimerSeconds.value = 0
     gameResult.value = null
     isProcessing.value = false
     errorMessage.value = null
@@ -232,6 +244,7 @@ export const useGameStore = defineStore('game', () => {
     selectedCards,
     playedCards,
     countdown,
+    roomTimerSeconds,
     gameResult,
     isProcessing,
     errorMessage,
@@ -257,9 +270,11 @@ export const useGameStore = defineStore('game', () => {
     addPlayedCards,
     updateCurrentPlayer,
     updateGameStatus,
+    updateBaseScore,
     updateMultiplier,
     setCallingInfo,
     setCountdown,
+    setRoomTimerSeconds,
     setGameResult,
     setProcessing,
     setError,

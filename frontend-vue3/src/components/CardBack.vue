@@ -1,6 +1,9 @@
 <template>
   <div class="card-back" :style="cardStyle">
     <div class="card-back__pattern"></div>
+    <div v-if="count != null" class="card-back__count">
+      {{ count }}
+    </div>
   </div>
 </template>
 
@@ -9,10 +12,12 @@ import { computed } from 'vue'
 
 interface Props {
   size?: 'small' | 'medium' | 'large'
+  count?: number
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  size: 'medium'
+  size: 'medium',
+  count: undefined
 })
 
 const cardStyle = computed(() => ({
@@ -31,6 +36,26 @@ const cardStyle = computed(() => ({
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
   position: relative;
   overflow: hidden;
+
+  &__count {
+    position: absolute;
+    right: 6px;
+    bottom: 6px;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(255, 215, 0, 0.55);
+    color: #ffd700;
+    font-size: 12px;
+    font-weight: 900;
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+    box-sizing: border-box;
+  }
 
   &__pattern {
     width: 80%;

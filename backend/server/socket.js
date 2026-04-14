@@ -13,6 +13,26 @@ function attachWebSocketHandlers(server, state) {
   const { rooms, players, games, runtime } = state;
   const hub = new WsHub();
   const wss = new WebSocketServer({ server, path: '/ws' });
+  /** @type {Map<string, { startedAt: number, interval: NodeJS.Timeout }>} */
+  const roomTimers = new Map();
+
+  function stopRoomTimer(roomId) {
+    const t = roomTimers.get(roomId);
+    if (!t) return;
+    clearInterval(t.interval);
+    roomTimers.delete(roomId);
+  }
+
+  function startRoomTimer(roomId) {
+    stopRoomTimer(roomId);
+    const startedAt = Date.now();
+    const interval = setInterval(() => {
+      const elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000);
+      hub.broadcastRoom(roomId, 'roomTimerUpdated', { roomId, elapsedSeconds });
+    }, 1000);
+    roomTimers.set(roomId, { startedAt, interval });
+    hub.broadcastRoom(roomId, 'roomTimerUpdated', { roomId, elapsedSeconds: 0 });
+  }
 
   function broadcastOnlineCount() {
     hub.broadcastAll('onlineCountUpdated', { count: runtime.onlinePlayerCount });
@@ -148,6 +168,7 @@ function attachWebSocketHandlers(server, state) {
 
     if (wasActive && room.players.length < 3) {
       stopCountdown(roomId);
+      stopRoomTimer(roomId);
       games.delete(roomId);
       room.status = 'waiting';
       try {
@@ -162,6 +183,7 @@ function attachWebSocketHandlers(server, state) {
     }
 
     if (room.players.length === 0) {
+      stopRoomTimer(roomId);
       rooms.delete(roomId);
       games.delete(roomId);
       try {
@@ -202,6 +224,7 @@ function attachWebSocketHandlers(server, state) {
     }
     if (rooms.has(roomId)) {
       stopCountdown(roomId);
+      stopRoomTimer(roomId);
       games.delete(roomId);
       rooms.delete(roomId);
     }
@@ -358,6 +381,7 @@ function attachWebSocketHandlers(server, state) {
                 console.error('更新房间状态失败:', error);
               }
 
+              startRoomTimer(roomId);
               hub.broadcastRoom(roomId, 'callingStart', { roomId });
 
               hub.broadcastRoom(roomId, 'gameStarted', {
@@ -374,6 +398,8 @@ function attachWebSocketHandlers(server, state) {
                 landlordCards: game.地主Cards,
                 landlordPlayerId: game.地主PlayerId,
                 currentPlayerIndex: game.currentPlayerIndex,
+                baseScore: game.底分,
+                multiplier: game.倍数,
                 callingInfo: {
                   currentCallerIndex: game.叫牌状态.currentCallerIndex,
                   highestScore: game.叫牌状态.highestScore,
@@ -417,6 +443,8 @@ function attachWebSocketHandlers(server, state) {
                     landlordCards: game.地主Cards,
                     landlordPlayerId: game.地主PlayerId,
                     currentPlayerIndex: game.currentPlayerIndex,
+                    baseScore: game.底分,
+                    multiplier: game.倍数,
                     gameStarted: true
                   });
 
@@ -451,6 +479,7 @@ function attachWebSocketHandlers(server, state) {
               });
 
               if (game.status === 'ended') {
+                stopRoomTimer(roomId);
                 const scores = game.calculateScores();
                 const winnerId = game.players.find((p) => p.cards.length === 0).id;
                 const isLandlordWin = winnerId === game.地主PlayerId;

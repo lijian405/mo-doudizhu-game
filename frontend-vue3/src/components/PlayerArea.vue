@@ -24,6 +24,14 @@
 
     <!-- 卡牌区域 -->
     <div class="player-area__cards">
+      <Transition name="turn-hint">
+        <div
+          v-if="showTurnHint && isSelf && isCurrentTurn"
+          class="player-area__turn-hint"
+        >
+          轮到你出牌了
+        </div>
+      </Transition>
       <!-- 自己的牌 -->
       <template v-if="isSelf">
         <CardComponent
@@ -37,11 +45,7 @@
 
       <!-- 其他玩家的牌（背面） -->
       <template v-else>
-        <CardBack
-          v-for="i in cardCount"
-          :key="i"
-          size="small"
-        />
+        <CardBack size="large" :count="cardCount" />
       </template>
     </div>
   </div>
@@ -64,6 +68,7 @@ interface Props {
   isLandlord?: boolean
   countdown?: number
   selectedCards?: Card[]
+  showTurnHint?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -72,7 +77,8 @@ const props = withDefaults(defineProps<Props>(), {
   isCurrentTurn: false,
   isLandlord: false,
   countdown: 0,
-  selectedCards: () => []
+  selectedCards: () => [],
+  showTurnHint: false
 })
 
 const emit = defineEmits<{
@@ -99,12 +105,12 @@ const handleCardClick = (card: Card) => {
   align-items: center;
   gap: 10px;
 
-  &--top {
-    grid-area: top;
-  }
-
   &--left {
     grid-area: left;
+  }
+
+  &--right {
+    grid-area: right;
   }
 
   &--bottom {
@@ -155,12 +161,58 @@ const handleCardClick = (card: Card) => {
   }
 
   &__cards {
+    position: relative;
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
     gap: 5px;
     max-width: 100%;
   }
+
+  &__turn-hint {
+    position: absolute;
+    top: -34px;
+    right: 0;
+    padding: 6px 10px;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 215, 0, 0.55);
+    color: #ffd700;
+    font-size: 16px;
+    font-weight: 800;
+    white-space: nowrap;
+    user-select: none;
+    pointer-events: none;
+    text-shadow:
+      0 2px 0 rgba(120, 75, 0, 0.35),
+      0 0 10px rgba(255, 215, 0, 0.35);
+    box-shadow:
+      0 10px 22px rgba(0, 0, 0, 0.25),
+      0 0 0 3px rgba(255, 215, 0, 0.08);
+  }
+}
+
+/* 显示/隐藏动画 */
+.turn-hint-enter-active,
+.turn-hint-leave-active {
+  transition:
+    opacity 200ms ease,
+    transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    filter 200ms ease;
+}
+
+.turn-hint-enter-from,
+.turn-hint-leave-to {
+  opacity: 0;
+  transform: translateY(8px) scale(0.98);
+  filter: blur(1px);
+}
+
+.turn-hint-enter-to,
+.turn-hint-leave-from {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  filter: blur(0);
 }
 
 @keyframes pulse {

@@ -7,8 +7,8 @@ import type { Player, PlayerPosition } from '@/types'
 // 获取玩家位置名称
 export function getPositionName(position: PlayerPosition): string {
   const names: Record<PlayerPosition, string> = {
-    top: '上方',
     left: '左侧',
+    right: '右侧',
     bottom: '自己'
   }
   return names[position]

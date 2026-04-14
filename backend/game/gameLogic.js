@@ -2,7 +2,7 @@
 
 // 生成牌组
 function generateDeck() {
-  const suits = ['♠', '♥', '♦', '♣'];
+  const suits = ['♠️', '♥️', '♦️', '♣️'];
   const ranks = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
   const deck = [];
   
@@ -13,8 +13,8 @@ function generateDeck() {
   }
   
   // 添加大小王
-  deck.push({ suit: 'JOKER', rank: '小王', value: 15 });
-  deck.push({ suit: 'JOKER', rank: '大王', value: 16 });
+  deck.push({ suit: '👑', rank: '小王', value: 16 });
+  deck.push({ suit: '👑', rank: '大王', value: 17 });
   
   return deck;
 }
@@ -35,8 +35,8 @@ function getCardValue(rank) {
     'K': 13,
     'A': 14,
     '2': 15,
-    '小王': 15,
-    '大王': 16
+    '小王': 16,
+    '大王': 17
   };
   return values[rank] || 0;
 }
@@ -163,6 +163,16 @@ function getCardType(cards) {
     }
     return 'invalid';
   }
+
+  // 三带二
+  if (cards.length === 5) {
+    const counts = countCardValues(cards);
+    const values = Object.values(counts);
+    if (values.includes(3) && values.includes(2)) {
+      return 'triple_with_pair';
+    }
+    // 不是三带二则继续往下判断（可能是顺子）
+  }
   
   // 四带二
   if (cards.length === 6) {
@@ -231,10 +241,27 @@ function getCardType(cards) {
   return 'invalid';
 }
 
-// 获取牌组的大小
+// 获取牌组的大小（不同牌型取不同关键牌点）
 function getCardsValue(cards) {
   if (cards.length === 0) return 0;
-  // 对牌进行排序，取最大值
+  const type = getCardType(cards);
+  const counts = countCardValues(cards);
+
+  // 三带一/三带二：只看三张的点数
+  if (type === 'triple_with_single' || type === 'triple_with_pair') {
+    for (const [v, c] of Object.entries(counts)) {
+      if (c === 3) return Number(v);
+    }
+  }
+
+  // 四带二：只看四张的点数
+  if (type === 'four_with_two') {
+    for (const [v, c] of Object.entries(counts)) {
+      if (c === 4) return Number(v);
+    }
+  }
+
+  // 其它：取最大点数（顺子/对子/三张/炸弹等）
   const sorted = [...cards].sort((a, b) => b.value - a.value);
   return sorted[0].value;
 }
@@ -269,7 +296,7 @@ function canPlay(cards, lastCards) {
   
   // 长度不同不能打
   if (cards.length !== lastCards.length) return false;
-  
+
   // 比较大小
   return getCardsValue(cards) > getCardsValue(lastCards);
 }
@@ -329,7 +356,6 @@ class Game {
         // 确定地主
         this.地主PlayerId = this.叫牌状态.highestBidder;
         this.底分 = this.叫牌状态.highestScore;
-        
         // 给地主发底牌
         const 地主Player = this.players.find(p => p.id === this.地主PlayerId);
         if (地主Player) {

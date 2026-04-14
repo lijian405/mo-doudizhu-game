@@ -6,8 +6,8 @@ import { adminApi, setAdminToken } from '@/services/adminApi'
 const router = useRouter()
 const route = useRoute()
 
-const username = ref('admin')
-const password = ref('123456')
+const username = ref('')
+const password = ref('')
 const error = ref('')
 const loading = ref(false)
 

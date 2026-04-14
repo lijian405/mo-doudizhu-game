@@ -22,8 +22,8 @@ export interface Player extends PlayerBase {
   cardCount: number
 }
 
-// 玩家位置
-export type PlayerPosition = 'top' | 'left' | 'bottom'
+// 玩家位置（主界面：left / bottom(self) / right）
+export type PlayerPosition = 'left' | 'right' | 'bottom'
 
 // 玩家状态
 export interface PlayerState {

@@ -67,6 +67,15 @@ export interface GameStartedData {
   currentPlayerIndex: number
   landlordPlayerId: string | null
   landlordCards: Card[]
+  /** 底分（叫分结束后确定；叫分阶段通常为 1） */
+  baseScore?: number
+  /** 倍数（叫几分就是几倍；后续炸弹/春天翻倍） */
+  multiplier?: number
+  /** 服务端二次 gameStarted（叫分结束进入出牌阶段） */
+  gameStarted?: boolean
+  /** 房间信息（服务端会带） */
+  room?: Room
+  callingInfo?: CallingInfo
 }
 
 // 叫分更新
@@ -153,6 +162,7 @@ export const SocketEvents = {
   ONLINE_COUNT_UPDATED: 'onlineCountUpdated',
   CALLING_START: 'callingStart',
   ROOM_DELETED: 'roomDeleted',
+  ROOM_TIMER_UPDATED: 'roomTimerUpdated',
   GET_ONLINE_COUNT: 'getOnlineCount'
 } as const
 
@@ -175,6 +185,7 @@ export interface ServerToClientEvents {
   onlineCountUpdated: (data: OnlineCountData) => void
   callingStart: (data: CallingStartData) => void
   roomDeleted: (data: RoomDeletedData) => void
+  roomTimerUpdated: (data: RoomTimerUpdatedData) => void
 }
 
 export interface ClientToServerEvents {
@@ -187,4 +198,9 @@ export interface ClientToServerEvents {
   pass: (data: PassData) => void
   getRooms: () => void
   getOnlineCount: () => void
+}
+
+export interface RoomTimerUpdatedData {
+  roomId: string
+  elapsedSeconds: number
 }
