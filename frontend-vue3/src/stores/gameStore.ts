@@ -54,10 +54,12 @@ export const useGameStore = defineStore('game', () => {
     return landlordPlayerId.value === playerStore.playerId
   })
 
-  // 获取玩家手牌数量
+  // 获取玩家手牌数量（服务端往往只带 cards，不带 cardCount）
   const getPlayerCardCount = (playerId: string): number => {
     const player = gameState.value?.players.find(p => p.id === playerId)
-    return player?.cardCount ?? 0
+    if (!player) return 0
+    console.log('player', player)
+    return player.cardCount ?? player.cards?.length ?? 0
   }
 
   // 获取玩家位置
@@ -91,11 +93,32 @@ export const useGameStore = defineStore('game', () => {
 
   // Actions
   const initGame = (state: GameState) => {
-    gameState.value = state
+    gameState.value = {
+      ...state,
+      players: state.players.map(p => ({
+        ...p,
+        cardCount: p.cardCount ?? p.cards?.length ?? 0
+      }))
+    }
     playedCards.value = []
     selectedCards.value = []
     myCards.value = []
     gameResult.value = null
+  }
+
+  /** 用服务端玩家快照同步手牌与张数（出牌、过牌等事件会带全量 players） */
+  const applyServerPlayersSnapshot = (
+    serverPlayers: Array<{ id: string; name: string; cards?: Card[]; cardCount?: number }>
+  ) => {
+    if (!gameState.value) return
+    for (const sp of serverPlayers) {
+      const local = gameState.value.players.find(p => p.id === sp.id)
+      if (!local) continue
+      if (sp.cards) {
+        local.cards = sp.cards
+      }
+      local.cardCount = sp.cardCount ?? sp.cards?.length ?? local.cardCount ?? 0
+    }
   }
 
   const setMyCards = (cards: Card[]) => {
@@ -227,6 +250,7 @@ export const useGameStore = defineStore('game', () => {
     canPass,
     // Actions
     initGame,
+    applyServerPlayersSnapshot,
     setMyCards,
     toggleCardSelection,
     clearSelectedCards,

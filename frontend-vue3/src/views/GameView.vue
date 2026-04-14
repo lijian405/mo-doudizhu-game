@@ -123,21 +123,23 @@
           @card-click="handleCardClick"
         />
 
-        <!-- 操作按钮 -->
+        <!-- 操作按钮（顺序与常见斗地主 UI：左不出、右出牌） -->
         <div class="action-buttons">
           <button
-            class="btn btn--play"
-            :disabled="!gameStore.isMyTurn || gameStore.selectedCards.length === 0"
-            @click="handlePlayCards"
-          >
-            出牌
-          </button>
-          <button
-            class="btn btn--pass"
+            type="button"
+            class="btn btn--pass btn--game-action"
             :disabled="!gameStore.isMyTurn || !gameStore.canPass"
             @click="handlePass"
           >
             不出
+          </button>
+          <button
+            type="button"
+            class="btn btn--play btn--game-action"
+            :disabled="!gameStore.isMyTurn || gameStore.selectedCards.length === 0"
+            @click="handlePlayCards"
+          >
+            出牌
           </button>
         </div>
       </div>
@@ -146,7 +148,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useRoomStore } from '@/stores/roomStore'
@@ -162,7 +164,9 @@ import type {
   GameEndedData,
   CountdownUpdatedData,
   PlayCardsFailedData,
-  CallingUpdatedData
+  CallingUpdatedData,
+  GameAbortedData,
+  CallingInfo
 } from '@/types'
 
 const router = useRouter()
@@ -178,7 +182,7 @@ const messageType = ref<'error' | 'success' | 'info'>('info')
 
 // 叫分相关状态
 const showCallingModal = ref(false) // 默认不显示叫分弹窗
-const callingInfo = ref({
+const callingInfo = ref<CallingInfo>({
   currentCallerIndex: 0,
   highestScore: 0,
   highestScorePlayerId: null,
@@ -339,25 +343,28 @@ const handleGameStarted = (data: any) => {
   if (data.gameStarted) {
     // 隐藏叫分弹窗
     showCallingModal.value = false
-    
+
     // 更新游戏状态为 playing
     gameStore.updateGameStatus('playing')
     gameStore.updateCurrentPlayer(data.currentPlayerIndex)
-    
+
     console.log('叫分结束，游戏正式开始')
-    // 更新地主玩家ID
+
     if (data.landlordPlayerId) {
       gameStore.updateLandlordPlayerId(data.landlordPlayerId)
-      // 这里需要两次更新自己的手牌，因为地主玩家会多三张牌,防止客户端无法渲染出新添加的地主牌
-      
-      // 再次设置自己的手牌，确保包含地主牌
-      let myPlayerData = data.players.find((p: any) => p.id === playerStore.playerId)
-      if (!myPlayerData) {
-        myPlayerData = data.players.find((p: any) => p.name === playerStore.playerName)
-      }
-      if (myPlayerData) {
-        gameStore.setMyCards(myPlayerData.cards)
-      }
+    }
+
+    // 同步所有人手牌与张数（含地主多三张底牌）
+    if (data.players?.length) {
+      gameStore.applyServerPlayersSnapshot(data.players)
+    }
+
+    let myPlayerData = data.players?.find((p: any) => p.id === playerStore.playerId)
+    if (!myPlayerData) {
+      myPlayerData = data.players?.find((p: any) => p.name === playerStore.playerName)
+    }
+    if (myPlayerData?.cards) {
+      gameStore.setMyCards(myPlayerData.cards)
     }
   } else {
     // 初始化游戏状态
@@ -427,32 +434,39 @@ const handleBackToRoom = () => {
 const handleCardsPlayed = (data: CardsPlayedData) => {
   console.log('出牌:', data)
 
-  // 只有当 cards 不为空时，才添加出牌记录
   if (data.cards && data.cards.length > 0) {
-    // 添加出牌记录
+    const name =
+      data.playerName ??
+      gameStore.gameState?.players.find(p => p.id === data.playerId)?.name ??
+      roomStore.getPlayerName(data.playerId)
     gameStore.addPlayedCards({
       playerId: data.playerId,
-      playerName: data.playerName,
+      playerName: name,
       cards: data.cards,
       timestamp: Date.now()
     })
   }
 
-  // 更新当前玩家
   gameStore.updateCurrentPlayer(data.currentPlayerIndex)
-
-  // 更新倍数
   gameStore.updateMultiplier(data.multiplier)
 
-  // 如果是自己出的牌，从手牌中移除
-  if (data.playerId === playerStore.playerId) {
-    gameStore.removePlayedCards(data.cards)
+  if (data.players?.length) {
+    gameStore.applyServerPlayersSnapshot(data.players)
+    const me = data.players.find(p => p.id === playerStore.playerId)
+    if (me?.cards) {
+      gameStore.setMyCards(me.cards)
+    }
     gameStore.clearSelectedCards()
   } else {
-    // 更新其他玩家的手牌数量
-    const player = gameStore.gameState?.players.find(p => p.id === data.playerId)
-    if (player) {
-      player.cardCount = Math.max(0, player.cardCount - data.cards.length)
+    if (data.playerId === playerStore.playerId) {
+      gameStore.removePlayedCards(data.cards)
+      gameStore.clearSelectedCards()
+    } else {
+      const player = gameStore.gameState?.players.find(p => p.id === data.playerId)
+      if (player && data.cards?.length) {
+        const prev = player.cardCount ?? player.cards?.length ?? 0
+        player.cardCount = Math.max(0, prev - data.cards.length)
+      }
     }
   }
 }
@@ -479,6 +493,13 @@ const handlePlayCardsFailed = (data: PlayCardsFailedData) => {
   showToast(data.message, 'error')
 }
 
+const handleGameAborted = (data: GameAbortedData) => {
+  if (data.roomId !== roomStore.roomId) return
+  showToast(data.message, 'info')
+  gameStore.clearGame()
+  router.push('/room')
+}
+
 onMounted(() => {
   // 检查是否在房间中
   if (!roomStore.isInRoom) {
@@ -493,6 +514,17 @@ onMounted(() => {
   socket.on('playCardsFailed', handlePlayCardsFailed)
   socket.on('callingUpdated', handleCallingUpdated)
   socket.on('gameStarted', handleGameStarted)
+  socket.on('gameAborted', handleGameAborted)
+})
+
+onUnmounted(() => {
+  socket.off('cardsPlayed', handleCardsPlayed)
+  socket.off('gameEnded', handleGameEnded)
+  socket.off('countdownUpdated', handleCountdownUpdated)
+  socket.off('playCardsFailed', handlePlayCardsFailed)
+  socket.off('callingUpdated', handleCallingUpdated)
+  socket.off('gameStarted', handleGameStarted)
+  socket.off('gameAborted', handleGameAborted)
 })
 </script>
 
@@ -547,8 +579,135 @@ onMounted(() => {
 
 .action-buttons {
   display: flex;
-  gap: 20px;
+  gap: clamp(18px, 5vw, 28px);
   margin-top: 10px;
+  justify-content: center;
+  align-items: center;
+}
+
+// 主界面：光泽立体「不出 / 出牌」（参考休闲手游按钮）
+.action-buttons .btn--game-action {
+  position: relative;
+  padding: 14px 38px;
+  min-width: 132px;
+  font-size: clamp(18px, 4.2vw, 22px);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  border: none;
+  border-radius: 18px;
+  cursor: pointer;
+  color: #fff;
+  overflow: visible;
+  isolation: isolate;
+  transition:
+    transform 0.12s ease,
+    filter 0.12s ease,
+    box-shadow 0.12s ease;
+  -webkit-font-smoothing: antialiased;
+
+  // 顶沿高光
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    pointer-events: none;
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.45);
+    z-index: 0;
+  }
+
+  &:disabled {
+    opacity: 0.52;
+    cursor: not-allowed;
+    filter: saturate(0.75);
+    transform: none;
+    box-shadow: none;
+  }
+
+  &:hover:not(:disabled) {
+    filter: brightness(1.04);
+    transform: translateY(-1px);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(2px);
+  }
+}
+
+// 不出：金橙渐变 + 深描边字
+.action-buttons .btn--pass.btn--game-action {
+  text-shadow:
+    0 2px 0 rgba(120, 55, 0, 0.35),
+    0 1px 2px rgba(0, 0, 0, 0.25);
+  -webkit-text-stroke: 1.5px #7a3d12;
+  paint-order: stroke fill;
+
+  background: linear-gradient(
+    180deg,
+    #ffeb7a 0%,
+    #ffc53d 35%,
+    #f59e1b 70%,
+    #d97706 100%
+  );
+  box-shadow:
+    0 5px 0 #9a5410,
+    0 8px 16px rgba(120, 55, 0, 0.35),
+    inset 0 -3px 6px rgba(180, 90, 0, 0.25);
+
+  &:active:not(:disabled) {
+    box-shadow:
+      0 2px 0 #9a5410,
+      0 4px 10px rgba(120, 55, 0, 0.3),
+      inset 0 -2px 4px rgba(180, 90, 0, 0.2);
+  }
+}
+
+// 出牌：青蓝渐变 + 底部光泽条 + 深蓝描边字
+.action-buttons .btn--play.btn--game-action {
+  text-shadow:
+    0 2px 0 rgba(0, 40, 100, 0.35),
+    0 1px 2px rgba(0, 0, 0, 0.25);
+  -webkit-text-stroke: 1.5px #0d3d6e;
+  paint-order: stroke fill;
+
+  background: linear-gradient(
+    180deg,
+    #7ee8ff 0%,
+    #38bdf8 38%,
+    #2563eb 72%,
+    #1d4ed8 100%
+  );
+  box-shadow:
+    0 5px 0 #0c3066,
+    0 8px 18px rgba(13, 61, 110, 0.4),
+    inset 0 -3px 8px rgba(15, 60, 120, 0.3);
+
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 18%;
+    left: 28%;
+    right: 28%;
+    height: 5px;
+    border-radius: 3px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.75) 45%,
+      rgba(255, 255, 255, 0.9) 50%,
+      rgba(255, 255, 255, 0.75) 55%,
+      transparent 100%
+    );
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  &:active:not(:disabled) {
+    box-shadow:
+      0 2px 0 #0c3066,
+      0 4px 12px rgba(13, 61, 110, 0.35),
+      inset 0 -2px 6px rgba(15, 60, 120, 0.25);
+  }
 }
 
 .btn {
@@ -564,30 +723,6 @@ onMounted(() => {
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
-  }
-
-  &--play {
-    background-color: #4CAF50;
-    color: white;
-    box-shadow: 0 3px 10px rgba(76, 175, 80, 0.3);
-
-    &:hover:not(:disabled) {
-      background-color: #45a049;
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
-    }
-  }
-
-  &--pass {
-    background-color: #f44336;
-    color: white;
-    box-shadow: 0 3px 10px rgba(244, 67, 54, 0.3);
-
-    &:hover:not(:disabled) {
-      background-color: #da190b;
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(244, 67, 54, 0.4);
-    }
   }
 
   &--primary {
@@ -672,6 +807,17 @@ onMounted(() => {
   gap: 15px;
   justify-content: center;
   flex-wrap: wrap;
+
+  // 叫分「不叫」：与主局「不出」样式区分，保持醒目红色
+  .btn--pass {
+    background-color: #f44336;
+    color: white;
+    box-shadow: 0 3px 10px rgba(244, 67, 54, 0.35);
+
+    &:hover:not(:disabled) {
+      background-color: #da190b;
+    }
+  }
 }
 
 // 游戏结果弹窗

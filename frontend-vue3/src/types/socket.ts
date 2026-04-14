@@ -53,6 +53,12 @@ export interface PassData {
 export interface RoomUpdatedData {
   roomId: string
   players: PlayerBase[]
+  /** 部分服务端/旧客户端可能嵌套在 room 下 */
+  room?: {
+    id?: string
+    players?: PlayerBase[]
+    status?: string
+  }
 }
 
 // 游戏开始
@@ -66,15 +72,21 @@ export interface GameStartedData {
 // 叫分更新
 export interface CallingUpdatedData extends CallingInfo {
   players: PlayerBase[]
+  /** 服务端字段名（与 highestScorePlayerId 同义） */
+  highestBidder?: string | null
+  gameStatus?: string
 }
 
 // 出牌
 export interface CardsPlayedData {
   playerId: string
-  playerName: string
+  playerName?: string
   cards: Card[]
   currentPlayerIndex: number
   multiplier: number
+  /** 服务端下发的全量玩家手牌快照 */
+  players?: Player[]
+  gameStatus?: string
 }
 
 // 游戏结束
@@ -92,8 +104,27 @@ export interface RoomListData {
   rooms: RoomListItem[]
 }
 
+// 游戏中途终止（玩家离开导致不足 3 人等）
+export interface GameAbortedData {
+  roomId: string
+  message: string
+}
+
 // 倒计时更新
 export interface CountdownUpdatedData extends CountdownInfo {}
+
+export interface OnlineCountData {
+  count: number
+}
+
+export interface CallingStartData {
+  roomId: string
+}
+
+export interface RoomDeletedData {
+  roomId: string
+  message: string
+}
 
 // ==================== Socket 事件名称 ====================
 
@@ -116,7 +147,12 @@ export const SocketEvents = {
   GAME_ENDED: 'gameEnded',
   PLAY_CARDS_FAILED: 'playCardsFailed',
   COUNTDOWN_UPDATED: 'countdownUpdated',
-  ROOM_LIST_UPDATED: 'roomListUpdated'
+  ROOM_LIST_UPDATED: 'roomListUpdated',
+  GAME_ABORTED: 'gameAborted',
+  ONLINE_COUNT_UPDATED: 'onlineCountUpdated',
+  CALLING_START: 'callingStart',
+  ROOM_DELETED: 'roomDeleted',
+  GET_ONLINE_COUNT: 'getOnlineCount'
 } as const
 
 // Socket 事件类型映射
@@ -129,6 +165,10 @@ export interface ServerToClientEvents {
   playCardsFailed: (data: PlayCardsFailedData) => void
   countdownUpdated: (data: CountdownUpdatedData) => void
   roomListUpdated: (data: RoomListData) => void
+  gameAborted: (data: GameAbortedData) => void
+  onlineCountUpdated: (data: OnlineCountData) => void
+  callingStart: (data: CallingStartData) => void
+  roomDeleted: (data: RoomDeletedData) => void
 }
 
 export interface ClientToServerEvents {
@@ -140,4 +180,5 @@ export interface ClientToServerEvents {
   playCards: (data: PlayCardsData) => void
   pass: (data: PassData) => void
   getRooms: () => void
+  getOnlineCount: () => void
 }

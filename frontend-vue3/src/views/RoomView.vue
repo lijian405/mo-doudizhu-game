@@ -65,12 +65,14 @@ import { useRouter } from 'vue-router'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useRoomStore } from '@/stores/roomStore'
 import { useSocket } from '@/composables/useSocket'
+import { useGameStore } from '@/stores/gameStore'
 import GameMessage from '@/components/GameMessage.vue'
-import type { RoomUpdatedData, GameStartedData, CallingUpdatedData } from '@/types'
+import type { RoomUpdatedData, GameStartedData, CallingUpdatedData, GameAbortedData } from '@/types'
 
 const router = useRouter()
 const playerStore = usePlayerStore()
 const roomStore = useRoomStore()
+const gameStore = useGameStore()
 const socket = useSocket()
 
 // 状态
@@ -149,7 +151,15 @@ const handleRoomDeleted = (data: any) => {
   showToast(data.message || '房间已被删除', 'error')
   roomStore.clearRoom()
   playerStore.clearPlayer()
+  gameStore.clearGame()
   router.push('/')
+}
+
+// 游戏中途终止（仍在房间界面时也会收到）
+const handleGameAborted = (data: GameAbortedData) => {
+  if (data.roomId !== roomStore.roomId) return
+  showToast(data.message, 'info')
+  gameStore.clearGame()
 }
 
 onMounted(() => {
@@ -163,6 +173,7 @@ onMounted(() => {
   socket.on('roomUpdated', handleRoomUpdated)
   socket.on('callingStart', handleCallingStart)
   socket.on('roomDeleted', handleRoomDeleted)
+  socket.on('gameAborted', handleGameAborted)
 })
 
 onUnmounted(() => {
@@ -170,6 +181,7 @@ onUnmounted(() => {
   socket.off('roomUpdated', handleRoomUpdated)
   socket.off('callingStart', handleCallingStart)
   socket.off('roomDeleted', handleRoomDeleted)
+  socket.off('gameAborted', handleGameAborted)
 })
 </script>
 
