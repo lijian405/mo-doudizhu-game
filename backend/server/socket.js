@@ -15,6 +15,7 @@ function attachWebSocketHandlers(server, state) {
   const wss = new WebSocketServer({ server, path: '/ws' });
   /** @type {Map<string, { startedAt: number, interval: NodeJS.Timeout }>} */
   const roomTimers = new Map();
+  const ROOM_MAX_SECONDS = 30 * 60;
 
   function stopRoomTimer(roomId) {
     const t = roomTimers.get(roomId);
@@ -29,6 +30,25 @@ function attachWebSocketHandlers(server, state) {
     const interval = setInterval(() => {
       const elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000);
       hub.broadcastRoom(roomId, 'roomTimerUpdated', { roomId, elapsedSeconds });
+
+      if (elapsedSeconds >= ROOM_MAX_SECONDS) {
+        // 超时强制结束本局：停止计时/倒计时，清理对局并通知客户端返回房间
+        stopRoomTimer(roomId);
+        stopCountdown(roomId);
+        games.delete(roomId);
+        const room = rooms.get(roomId);
+        if (room) {
+          room.status = 'waiting';
+          updateRoomStatus(roomId, 'waiting', room.players.length).catch((e) => {
+            console.error('更新房间状态失败:', e);
+          });
+        }
+        hub.broadcastRoom(roomId, 'gameAborted', {
+          roomId,
+          message: '房间计时超过30分钟，游戏已结束'
+        });
+        broadcastRoomList();
+      }
     }, 1000);
     roomTimers.set(roomId, { startedAt, interval });
     hub.broadcastRoom(roomId, 'roomTimerUpdated', { roomId, elapsedSeconds: 0 });
