@@ -1,11 +1,5 @@
 <template>
   <div class="player-area" :class="`player-area--${position}`">
-    <!-- 轮到标识 -->
-    <div
-      v-if="isCurrentTurn"
-      class="player-area__turn-indicator"
-    ></div>
-
     <!-- 倒计时 -->
     <Countdown
       v-if="isCurrentTurn && countdown > 0"
@@ -13,17 +7,18 @@
       class="player-area__countdown"
     />
 
-    <!-- 地主标识 -->
-    <div
-      v-if="isLandlord"
-      class="player-area__landlord-badge"
-    >
-      地主
-    </div>
-
     <!-- 玩家信息 -->
     <div class="player-area__info">
-      <div class="player-area__name">{{ playerName }}</div>
+      <div class="player-area__name">
+        <!-- 地主标识 -->
+        <div
+          v-if="isLandlord"
+          class="player-area__landlord-badge"
+        >
+          地主
+        </div>
+        {{ playerName }}
+      </div>
       <div class="player-area__score">分值: {{ score }}</div>
     </div>
 
@@ -116,28 +111,15 @@ const handleCardClick = (card: Card) => {
     grid-area: bottom;
   }
 
-  &__turn-indicator {
-    width: 20px;
-    height: 20px;
-    background-color: #4CAF50;
-    border-radius: 50%;
-    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.4);
-    animation: pulse 1.5s infinite;
-  }
-
   &__countdown {
-    margin-bottom: 5px;
-  }
-
-  &__landlord-badge {
-    display: inline-block;
-    padding: 4px 12px;
-    background-color: #ff6b6b;
-    color: white;
-    border-radius: 12px;
-    font-size: 12px;
+    font-size: 24px;
     font-weight: bold;
-    box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+    color: #ff6b6b;
+    background-color: rgba(255, 107, 107, 0.1);
+    padding: 8px 16px;
+    border-radius: 20px;
+    box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+    animation: pulse 1s infinite;
   }
 
   &__info {
@@ -149,6 +131,21 @@ const handleCardClick = (card: Card) => {
     font-size: 16px;
     font-weight: 600;
     margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  &__landlord-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    background-color: #ff6b6b;
+    color: white;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: bold;
+    box-shadow: 0 2px 6px rgba(255, 107, 107, 0.3);
   }
 
   &__score {

@@ -4,49 +4,97 @@
 
 ## 游戏规则
 
-1 、发牌
-一副牌54 张，一人17 张，留3 张做底牌，在确定地主之前玩家不能看底牌。
-2 、叫牌
-叫牌按出牌的顺序轮流进行，每人只能叫一次。叫牌时可以叫“1 分” ，“2 分” ，“3 分” ，“ 不叫” 。后叫牌者只能叫比前面玩家高的分或者不叫。叫牌结束后所叫分值最大的玩家为地主；如果有玩家叫“3 分” 则立即结束叫牌，该玩家为地主；如果都不叫，则重新发牌，重新叫牌。
-3 、第一个叫牌的玩家
-第一个叫分玩家每局都由系统随机选取。
-4 、出牌
-将三张底牌交给地主，并亮出底牌让所有人都能看到。地主首先出牌，然后按逆时针顺序依次出牌，轮到用户跟牌时，用户可以选择“ 不出” 或出比上一个玩家大的牌。某一玩家出完牌时结束本局。
-5 、牌型
-火箭：即双王（大王和小王），最大的牌。
-炸弹：四张同数值牌（如四个7 ）。
-单牌：单个牌（如红桃5 ）。
-对牌：数值相同的两张牌（如梅花4+ 方块4 ）。
-三张牌：数值相同的三张牌（如三个J ）。
-三带一：数值相同的三张牌+ 一张单牌或一对牌。例如：333+6 或444+99
-单顺：五张或更多的连续单牌（如：45678 或78910JQK ）。包括2点不包括双王。
-双顺：三对或更多的连续对牌（如：334455 、JJ ）。包括2点不包括双王。
-三顺：二个或更多的连续三张牌（如：333444 、）。包括2点不包括双王。
-飞机带翅膀：三顺+同数量的不相同的单牌（或同数量不相同的对牌）。
-如：444555+79 或333444555+7799JJ
-四带二：四张牌+两手牌。（注意：四带二不是炸弹）。
-如：5555 +3 +8 或4444 +55 +77 。
-6 、牌型的大小
-火箭最大，可以打任意其他的牌。
-炸弹比火箭小，比其他牌大。都是炸弹时按牌的分值比大小。
-除火箭和炸弹外，其他牌必须要牌型相同且总张数相同才能比大小。
-单牌按分值比大小，依次是大王＞ 小王＞2＞A＞K＞Q＞J＞10＞9＞8＞7＞6＞5＞4＞3 ，不分花色。
-对牌、三张牌都按分值比大小。
-顺牌按最大的一张牌的分值来比大小。
-飞机带翅膀和四带二按其中的三顺和四张部分来比，带的牌不影响大小。
-7 、胜负判定
-任意一家出完牌后结束游戏，若是地主先出完牌则地主胜，否则另外两家胜。
-8 、积分
-底分：叫牌的分数为1 、2、3分
-倍数：初始为1 ，每炸弹*2 、春天*2。（火箭和炸弹留在手上没出的不算）
-一局结束后：
-地主胜：地主得分为2\* 底分\* 倍数。其余玩家各得：- 底分\* 倍数
-地主败：地主得分为-2\* 底分\* 倍数。其余玩家各得：底分\* 倍数
-地主所有牌出完，其他两家一张都未出：分数\* 2
-其他两家中有一家先出完牌，地主只出过一手牌：分数\* 2
-逃跑扣分：底分\* 倍数\*3
-还没人叫牌时逃跑：扣3 分
-积分=底分×倍数×玩家身份系数（农民为1地主为2）
+### 1. 发牌
+
+- 一副牌共 **54** 张：每人 **17** 张，剩余 **3** 张为底牌。
+- 在确定地主之前，玩家**不能**查看底牌。
+
+### 2. 叫牌
+
+- 按出牌顺序轮流叫牌，每人每轮只能叫一次。
+- 可选：**1 分**、**2 分**、**3 分**、**不叫**。
+- 后叫牌者只能叫**高于**前面已叫最高分，或选择**不叫**。
+- **叫牌结束与地主确定**
+  - 叫牌结束后，**叫分最高**的玩家为地主。
+  - 若有玩家叫 **3 分**，叫牌立即结束，该玩家为地主。
+  - 若**所有人都不叫**，则重新发牌并重新叫牌。
+
+### 3. 第一个叫牌的玩家
+
+每局第一个叫分的玩家由**系统随机**指定。
+
+### 4. 出牌
+
+- 三张底牌交给地主，**亮出底牌**，所有玩家可见。
+- **地主先出**，之后按逆时针顺序轮流出牌。
+- 轮到跟牌时，可选择 **不出**，或出**大于**上一手玩家的牌。
+- 任一玩家**出完手牌**，本局结束。
+
+### 5. 牌型
+
+| 牌型 | 说明 | 示例（示意） |
+|------|------|----------------|
+| **火箭** | 大王 + 小王，最大牌型 | 大王、小王 |
+| **炸弹** | 四张同点数 | 四个 7 |
+| **单牌** | 单张 | 红桃 5 |
+| **对牌** | 两张同点数 | 梅花 4 + 方块 4 |
+| **三张** | 三张同点数 | 三个 J |
+| **三带一** | 三张同点数 + 一张单牌或一对 | 333+6、444+99 |
+| **单顺** | ≥5 张连续单牌；**不可含 2 与双王**（原文：包括 2 点、不包括双王） | 45678、78910JQK |
+| **双顺** | ≥3 对连续对子；**不可含 2 与双王** | 334455、JJQQKK |
+| **三顺** | ≥2 组连续三张；**不可含 2 与双王** | 333444 |
+| **飞机带翅膀** | 三顺 + 同数量的单牌（或对子），所带牌点数可不同 | 444555+79、333444555+7799JJ |
+| **四带二** | 四张同点数 + **两手牌**（两张单或两对等）；**四带二不算炸弹** | 5555+3+8、4444+55+77 |
+
+### 6. 牌型大小
+
+- **火箭**最大，可压任意其他牌。
+- **炸弹**仅次于火箭，可压非炸弹牌型；均为炸弹时按**炸弹点数**比大小。
+- 除火箭、炸弹外：须**牌型相同**且**总张数相同**才能比较。
+- **单牌**比大小（不分花色）：大王 > 小王 > 2 > A > K > Q > J > 10 > … > 3。
+- **对子、三张**按其中牌的点数规则比较。
+- **顺子**按其中**最大的一张**比。
+- **飞机带翅膀、四带二**：按其中的**三顺部分 / 四张部分**比大小，**所带牌不影响**大小。
+
+### 7. 胜负判定
+
+任意一家出完牌即结束本局：
+
+- **地主**先出完 → 地主胜。
+- **农民**任一方先出完 → 农民胜。
+
+### 8. 积分
+
+**底分**
+
+- 取叫牌阶段叫到的分数：**1 / 2 / 3 分**。
+
+**倍数**
+
+- 初始为 **1**。
+- 每出一个**炸弹**：倍数 ×2；**春天**再 ×2（与原文「每炸弹、春天」表述一致）。
+- 留在手牌未出的火箭、炸弹**不计入**上述翻倍（原文：火箭和炸弹留在手上没出的不算）。
+
+**一局结束后的得分**
+
+| 结果 | 地主 | 每名农民 |
+|------|------|----------|
+| 地主胜 | +2 × 底分 × 倍数 | −底分 × 倍数 |
+| 地主败 | −2 × 底分 × 倍数 | +底分 × 倍数 |
+
+**额外翻倍（原文）**
+
+- 地主出完时，另两家**一张未出**：分数 ×2。
+- 某农民先出完，且地主**只出过一手牌**：分数 ×2。
+
+**逃跑**
+
+- 一般逃跑：扣 **底分 × 倍数 × 3**。
+- **尚无人叫牌**时逃跑：扣 **3 分**。
+
+**汇总公式（原文）**
+
+> 积分 = 底分 × 倍数 × 玩家身份系数（农民为 1，地主为 2）
 
 ## 游戏流程
 
@@ -167,3 +215,120 @@
   - 满员中：当房间人数达到3人且游戏没有开始时。
 - 当玩家点击”等待中“的房间时，弹出Modal层，用户输出玩家名称，即可进入房间。
 - 当玩家点击”已开始“或”满员中“的房间时，给出相应提示。
+
+---
+
+## 前后端架构与游戏交互（实现对照）
+
+下文概括当前仓库中的**游戏流程、后端逻辑、前后端如何通过 Socket / HTTP 协作**，便于对照代码阅读。
+
+### 1. 技术结构（简要）
+
+| 层 | 技术 |
+|----|------|
+| 后端 | Express + **Socket.io**，房间 /持久化用 MySQL（`backend/db/db.js`） |
+| 游戏逻辑 | `backend/game/gameLogic.js`（`Game` 类 + 牌型 / 比大小） |
+| 前端 | Vue 3 + Pinia，`frontend-vue3/src/composables/useSocket.ts` 单例连 `http://localhost:3000` |
+
+- **HTTP**：创建 / 查询房间列表等（例如 `POST /api/rooms`）。
+- **WebSocket**：进房、开局、叫分、出牌、过牌、房间广播、倒计时等。
+
+### 2. 端到端流程（玩家视角）
+
+```mermaid
+sequenceDiagram
+  participant C as 客户端
+  participant API as Express REST
+  participant IO as Socket.io
+  participant G as Game(gameLogic)
+
+  C->>API: POST /api/rooms 创建房间
+  C->>IO: joinRoom { roomId, playerName }
+  IO-->>C: roomUpdated / roomListUpdated
+  Note over C,IO: 满 3 人，房主点「开始游戏」
+  C->>IO: startGame { roomId }
+  IO->>G: new Game + start() 发牌
+  IO-->>C: callingStart, gameStarted(calling)
+  Note over C,G: 轮流 callLandlord
+  C->>IO: callLandlord { roomId, score }
+  IO->>G: call地主()
+  IO-->>C: callingUpdated / gameStarted(playing)
+  Note over C,G: 出牌阶段
+  C->>IO: playCards / pass
+  IO->>G: playCards / 仅切回合
+  IO-->>C: cardsPlayed, countdownUpdated
+  IO-->>C: gameEnded（有人出完牌）
+```
+
+### 3. 后端：`backend/server/socket.js` 中与游戏相关的 Socket 事件
+
+（入口 `backend/server/index.js` 创建 `io` 后调用 `attachSocketHandlers(io, state)`；进程内状态见 `backend/server/state.js`。）
+
+**房间与列表**
+
+- `joinRoom`：查 DB 房间是否存在 → 内存 `rooms` / `players` → `socket.join(roomId)` → `roomUpdated` → `broadcastRoomList` → `roomListUpdated`。
+- `leaveRoom` / `disconnect`：可能删房、删 `games`、DB `deleteRoom`，并发 `roomDeleted` / `roomUpdated`。
+
+**开局**
+
+- `startGame`：满 3 人时 `new Game(roomId, room.players)`，`game.start()` 发牌；`games.set(roomId, game)`；DB 房间状态改为 `playing`；广播 `callingStart`、`gameStarted`（含手牌、底牌、叫分信息）。
+
+**叫分**
+
+- `callLandlord`：`game.call地主(socket.id, score)`；广播 `callingUpdated`；若进入出牌阶段再发一次 `gameStarted`（带 `gameStarted: true`），并 `startCountdown(roomId)`。
+
+**出牌 / 过牌**
+
+- `playCards`：成功则 `cardsPlayed`，若 `status === 'ended'` 再 `gameEnded`，并重置房间为 `waiting`。
+- `pass`：当前玩家且「上一手不是自己」时，只推进 `currentPlayerIndex`，同样发 `cardsPlayed`（`cards: []`）。
+
+**倒计时**
+
+- `startCountdown`：出牌阶段 30s；若当前回合玩家就是 `lastPlayerId`（上一手是自己），不倒计时、必须出牌；超时则自动轮到下家并发一次类似「空出牌」的 `cardsPlayed`（实现中有硬编码的上家索引，属实现细节）。
+
+相关代码位置：`backend/server/socket.js` 中 `startGame`、`callLandlord`、`playCards`、`pass`、`startCountdown` 等处理器。
+
+### 4. 游戏逻辑：`backend/game/gameLogic.js`（权威规则）
+
+**`Game` 状态**
+
+- `status`：`waiting` → `calling` → `playing` → `ended`
+- `叫牌状态`：`currentCallerIndex`、`highestScore`、`highestBidder`
+- 出牌：`lastCards`、`lastPlayerId`、`currentPlayerIndex`
+
+**发牌** `start()` / `dealCards`：洗牌，3 张底牌进 `地主Cards`，每人 17 张，按点数排序。
+
+**叫地主** `call地主(playerId, score)`
+
+- 只有当前 `currentCallerIndex` 对应玩家可操作。
+- `score` 为 1–3 且高于当前 `highestScore` 才更新叫分与最高叫家；`score` 0（不叫）只推进轮次。
+- 结束条件：轮完一圈回到**第一个叫牌玩家**的索引，或有人叫到 **3 分**。
+  - 有最高叫家 → 底牌并入该玩家，`status = 'playing'`，地主先出。
+  - 无人叫 → `start()` **重新发牌**。
+
+**出牌** `playCards(playerId, cards)`
+
+- 须为当前 `currentPlayerIndex`。
+- 若上一手不是自己，须 `canPlay(cards, lastCards)`；若上一手是自己，可自由出下一手（清空压制关系）。
+- 炸弹：`倍数 *= 2`。
+- 有人手牌为空 → `ended`；若其余两家仍各 17 张 → 记「春天」并再 `倍数 *= 2`。
+- 积分 `calculateScores()`：按地主赢 / 输、底分、倍数给三人记分。
+
+**牌型** `getCardType` / `canPlay`：单张、对子、三张、三带一、四带二、顺子、双顺、三顺、炸弹 / 王炸等；非炸弹需同型同长度比最大牌点；炸弹可压非炸弹，炸弹间比点数。
+
+### 5. 前端：如何接这些事件
+
+- **连接与发送**：`frontend-vue3/src/composables/useSocket.ts` 封装 `joinRoom`、`startGame`、`callLandlord`、`playCards`、`pass`、`getRooms` 等。
+- **房间页** `frontend-vue3/src/views/RoomView.vue`：`startGame` 后立刻 `router.push('/game')`；监听 `callingStart`（他人开局时也能跳进游戏页）、`roomUpdated`、`roomDeleted`。
+- **游戏页** `frontend-vue3/src/views/GameView.vue`：`onMounted` 注册 `gameStarted`、`callingUpdated`、`cardsPlayed`、`gameEnded`、`countdownUpdated`、`playCardsFailed`。
+  - 第一次 `gameStarted`（无 `gameStarted: true`）：初始化 Pinia `gameStore`，显示叫分弹窗，`callLandlord` 走 socket。
+  - 第二次 `gameStarted`（`gameStarted: true`）：关闭叫分、更新地主与手牌、进入出牌 UI。
+  - `handleCardsPlayed`：更新当前玩家索引、倍数；有牌则写入 `playedCards`；自己则从 `myCards` 移除，别人则减 `cardCount`。
+
+`frontend-vue3/src/stores/gameStore.ts` 负责：`myCards`、`playedCards`、`callingInfo`、是否可「不出」`canPass`（与后端「上一手必须跟」的规则对齐）等。
+
+### 6. 值得留意的实现细节（读代码时有用）
+
+1. **`createRoom`**：前端 `apiService` 走 **REST**，`useSocket` 里虽有 `createRoom` emit，但当前**服务端没有** `socket.on('createRoom')`，实际以 HTTP 为准。
+2. **`roomUpdated` 载荷**：服务端发的是 `{ roomId, players }`，`RoomView` 里兼容了 `data.room?.players`。
+3. **`cardsPlayed` 里没有 `playerName`**：后端只发 `playerId`；若界面依赖 `playerName`，需要前端用 `roomStore` 再解析（类型里可能有 `playerName` 可选）。

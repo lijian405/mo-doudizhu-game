@@ -10,24 +10,6 @@
     <!-- 叫分弹窗 -->
     <div v-if="showCallingModal" class="calling-modal">
       <div class="calling-content">
-        <h2>叫分阶段</h2>
-        <p class="calling-subtitle">{{ callingStatusText }}</p>
-        
-        <div class="calling-info">
-          <div class="info-item">
-            <span class="info-label">当前叫分玩家:</span>
-            <span class="info-value">{{ currentCallerName }}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">最高叫分:</span>
-            <span class="info-value">{{ callingInfo.highestScore }}分</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">我的叫分:</span>
-            <span class="info-value">{{ myScore > 0 ? myScore + '分' : '未叫' }}</span>
-          </div>
-        </div>
-
         <div class="calling-buttons">
           <button
             class="btn btn--score"
@@ -363,10 +345,24 @@ const handleGameStarted = (data: any) => {
     gameStore.updateCurrentPlayer(data.currentPlayerIndex)
     
     console.log('叫分结束，游戏正式开始')
+    // 更新地主玩家ID
+    if (data.landlordPlayerId) {
+      gameStore.updateLandlordPlayerId(data.landlordPlayerId)
+      // 这里需要两次更新自己的手牌，因为地主玩家会多三张牌,防止客户端无法渲染出新添加的地主牌
+      
+      // 再次设置自己的手牌，确保包含地主牌
+      let myPlayerData = data.players.find((p: any) => p.id === playerStore.playerId)
+      if (!myPlayerData) {
+        myPlayerData = data.players.find((p: any) => p.name === playerStore.playerName)
+      }
+      if (myPlayerData) {
+        gameStore.setMyCards(myPlayerData.cards)
+      }
+    }
   } else {
     // 初始化游戏状态
     gameStore.initGame({
-      status: 'calling', // 初始状态为叫分
+      status: data.gameStarted ? 'playing' : 'calling', // 根据游戏是否真正开始设置状态
       players: data.players,
       currentPlayerIndex: data.currentPlayerIndex,
       landlordPlayerId: data.landlordPlayerId,
@@ -380,14 +376,12 @@ const handleGameStarted = (data: any) => {
 
     // 设置自己的手牌
     let myPlayerData = data.players.find((p: any) => p.id === playerStore.playerId)
-    console.log('查找玩家:', myPlayerData)
     // 如果通过 playerId 找不到，尝试通过玩家名称查找
     if (!myPlayerData) {
       myPlayerData = data.players.find((p: any) => p.name === playerStore.playerName)
     }
-    console.log('查找玩家:', myPlayerData)
     if (myPlayerData) {
-      console.log('设置自己的手牌:', myPlayerData.cards)
+      console.log('我的牌:', myPlayerData.cards)
       gameStore.setMyCards(myPlayerData.cards)
       // 如果找到玩家数据，更新 playerId
       if (myPlayerData.id && playerStore.playerId === '') {
@@ -412,11 +406,14 @@ const handleGameStarted = (data: any) => {
       currentCallerIndex.value = data.callingInfo.currentCallerIndex
     }
     
-    // 确保手牌已设置后再显示叫分弹窗
-    setTimeout(() => {
-      showCallingModal.value = true
-      console.log('游戏初始化，进入叫分阶段')
-    }, 500)
+    // 只有在游戏未真正开始时才显示叫分弹窗
+    if (!data.gameStarted) {
+      // 确保手牌已设置后再显示叫分弹窗
+      setTimeout(() => {
+        showCallingModal.value = true
+        console.log('游戏初始化，进入叫分阶段')
+      }, 500)
+    }
   }
 }
 
@@ -671,9 +668,10 @@ onMounted(() => {
 }
 
 .calling-buttons {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  display: flex;
   gap: 15px;
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
 // 游戏结果弹窗

@@ -99,7 +99,6 @@ export const useGameStore = defineStore('game', () => {
   }
 
   const setMyCards = (cards: Card[]) => {
-    console.log('设置自己的手牌:', cards)
     // 清空旧的手牌数据，避免重复叠加
     myCards.value = []
     // 设置新的手牌数据
@@ -195,6 +194,13 @@ export const useGameStore = defineStore('game', () => {
     })
   }
 
+  // 更新地主玩家ID
+  const updateLandlordPlayerId = (landlordId: string | null) => {
+    if (gameState.value) {
+      gameState.value.landlordPlayerId = landlordId
+    }
+  }
+
   return {
     // State
     gameState,
@@ -237,6 +243,7 @@ export const useGameStore = defineStore('game', () => {
     getPlayerCardCount,
     getPlayerPosition,
     updatePlayerCardCount,
-    removePlayedCards
+    removePlayedCards,
+    updateLandlordPlayerId
   }
 })

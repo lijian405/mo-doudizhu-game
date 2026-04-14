@@ -4,53 +4,20 @@
       <div class="login-header">
         <h1>联机斗地主</h1>
         <p class="login-subtitle">AI时代的多人在线游戏体验</p>
+        <div class="online-count">
+          <span class="online-icon">👥</span>
+          <span>当前在线: {{ onlinePlayerCount }} 人</span>
+        </div>
       </div>
 
-      <div class="login-form">
-        <div class="form-group">
-          <label for="player-name">玩家名称</label>
-          <div class="input-container">
-            <span class="input-icon">👤</span>
-            <input
-              id="player-name"
-              v-model="playerName"
-              type="text"
-              placeholder="请输入您的名称"
-              @keyup.enter="handleJoinRoom"
-            />
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="room-id">房间ID</label>
-          <div class="input-container">
-            <span class="input-icon">🏠</span>
-            <input
-              id="room-id"
-              v-model="roomId"
-              type="text"
-              placeholder="请输入房间ID"
-              @keyup.enter="handleJoinRoom"
-            />
-          </div>
-        </div>
-
-        <div class="login-buttons">
-          <button
-            class="btn btn--primary"
-            :disabled="isLoading"
-            @click="handleJoinRoom"
-          >
-            {{ isLoading ? '加入中...' : '加入房间' }}
-          </button>
-          <button
-            class="btn btn--secondary"
-            :disabled="isLoading"
-            @click="showCreateModal = true"
-          >
-            {{ isLoading ? '创建中...' : '创建房间' }}
-          </button>
-        </div>
+      <div class="login-actions">
+        <button
+          class="btn btn--primary create-room-btn"
+          :disabled="isLoading"
+          @click="showCreateModal = true"
+        >
+          {{ isLoading ? '创建中...' : '创建房间' }}
+        </button>
       </div>
 
       <!-- 房间列表 -->
@@ -144,14 +111,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useRoomStore } from '@/stores/roomStore'
 import { useSocket } from '@/composables/useSocket'
 import { roomApi } from '@/services/apiService'
 import GameMessage from '@/components/GameMessage.vue'
-import { validatePlayerName, validateRoomId, generateRoomId } from '@/utils/gameHelper'
+import { validatePlayerName, generateRoomId } from '@/utils/gameHelper'
 import type { RoomUpdatedData, GameStartedData, RoomListItem, RoomListData } from '@/types'
 
 const router = useRouter()
@@ -160,9 +127,10 @@ const roomStore = useRoomStore()
 const socket = useSocket()
 
 // 表单数据
-const playerName = ref('')
-const roomId = ref('')
 const isLoading = ref(false)
+
+// 在线玩家数量
+const onlinePlayerCount = ref(0)
 
 // 房间列表
 const rooms = ref<RoomListItem[]>([])
@@ -199,46 +167,11 @@ const roomStatusText = (status: string): string => {
   return statusMap[status] || status
 }
 
-// 加入房间
-const handleJoinRoom = () => {
-  // 验证输入
-  const nameValidation = validatePlayerName(playerName.value)
-  if (!nameValidation.valid) {
-    showToast(nameValidation.message!, 'error')
-    return
-  }
-
-  const roomValidation = validateRoomId(roomId.value)
-  if (!roomValidation.valid) {
-    showToast(roomValidation.message!, 'error')
-    return
-  }
-
-  isLoading.value = true
-
-  // 设置当前玩家
-  playerStore.setCurrentPlayer({
-    id: '', // 服务器会分配
-    name: playerName.value.trim(),
-    roomId: roomId.value.trim().toUpperCase(),
-    score: 1000
-  })
-
-  // 发送加入房间请求
-  socket.joinRoom({
-    roomId: roomId.value.trim().toUpperCase(),
-    playerName: playerName.value.trim()
-  })
-}
-
-
-
 // 处理房间点击
 const handleRoomClick = (room: RoomListItem) => {
   if (room.roomStatus === 'waiting') {
     // 显示加入房间 Modal
     selectedRoomId.value = room.id
-    joinPlayerName.value = playerName.value
     showJoinModal.value = true
   } else if (room.roomStatus === 'full') {
     showToast('该房间已满员', 'info')
@@ -311,6 +244,12 @@ const handleGameStarted = (data: GameStartedData) => {
   router.push('/game')
 }
 
+// 监听在线玩家数量更新
+const handleOnlineCountUpdated = (data: { count: number }) => {
+  console.log('在线玩家数量更新:', data)
+  onlinePlayerCount.value = data.count
+}
+
 // 加载房间列表
 const loadRooms = async () => {
   try {
@@ -327,44 +266,6 @@ const loadRooms = async () => {
 const handleRoomListUpdated = (data: RoomListData) => {
   console.log('房间列表更新 (WebSocket):', data)
   rooms.value = data.rooms
-}
-
-// 创建房间
-const handleCreateRoom = () => {
-  // 验证输入
-  const nameValidation = validatePlayerName(playerName.value)
-  if (!nameValidation.valid) {
-    showToast(nameValidation.message!, 'error')
-    return
-  }
-
-  isLoading.value = true
-
-  // 生成房间ID
-  const newRoomId = generateRoomId()
-  roomId.value = newRoomId
-
-  // 设置当前玩家
-  playerStore.setCurrentPlayer({
-    id: '', // 服务器会分配
-    name: playerName.value.trim(),
-    roomId: newRoomId,
-    score: 1000
-  })
-
-  // 通过API创建房间
-  roomApi.createRoom(newRoomId, playerName.value.trim()).then(() => {
-    // 通过WebSocket加入房间
-    socket.joinRoom({
-      roomId: newRoomId,
-      playerName: playerName.value.trim()
-    })
-    isLoading.value = false
-  }).catch(error => {
-    console.error('创建房间失败:', error)
-    showToast('创建房间失败', 'error')
-    isLoading.value = false
-  })
 }
 
 // Modal 创建房间
@@ -411,6 +312,7 @@ onMounted(() => {
   // 注册事件监听
   socket.on('roomUpdated', handleRoomUpdated)
   socket.on('gameStarted', handleGameStarted)
+  socket.on('onlineCountUpdated', handleOnlineCountUpdated)
   socket.on('roomListUpdated', handleRoomListUpdated)
   
   // 加载房间列表 (API)
@@ -418,12 +320,16 @@ onMounted(() => {
   
   // 每30秒刷新一次房间列表
   intervalId = window.setInterval(loadRooms, 30000)
+  
+  // 初始化在线玩家数量
+  socket.emit('getOnlineCount')
 })
 
 onUnmounted(() => {
   // 清理事件监听
   socket.off('roomUpdated', handleRoomUpdated)
   socket.off('gameStarted', handleGameStarted)
+  socket.off('onlineCountUpdated', handleOnlineCountUpdated)
   socket.off('roomListUpdated', handleRoomListUpdated)
   
   // 清理定时器
@@ -477,114 +383,54 @@ onUnmounted(() => {
   }
 
   .login-subtitle {
-    margin-bottom: 30px;
+    margin-bottom: 20px;
     color: #666;
     font-size: 1.1rem;
   }
-}
-
-.login-form {
-  margin-bottom: 30px;
-}
-
-.form-group {
-  margin-bottom: 20px;
-  text-align: left;
-
-  label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 600;
-    color: #333;
+  
+  .online-count {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background-color: #f8f9fa;
+    padding: 10px 20px;
+    border-radius: 20px;
+    margin-bottom: 30px;
     font-size: 0.9rem;
-  }
-}
-
-.input-container {
-  position: relative;
-  background-color: #f8f9fa;
-  border-radius: 10px;
-  overflow: hidden;
-  border: 2px solid transparent;
-  transition: all 0.3s ease;
-
-  &:hover {
-    border-color: #667eea;
-  }
-
-  &:focus-within {
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-  }
-
-  .input-icon {
-    position: absolute;
-    left: 15px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 1.2rem;
-  }
-
-  input {
-    width: 100%;
-    padding: 15px 15px 15px 45px;
-    border: none;
-    background-color: transparent;
-    font-size: 1rem;
     color: #333;
-    outline: none;
-
-    &::placeholder {
-      color: #999;
+    font-weight: 600;
+    
+    .online-icon {
+      font-size: 1.2rem;
     }
   }
 }
 
-.login-buttons {
-  display: flex;
-  gap: 15px;
-  margin-top: 30px;
+.login-actions {
+  margin: 30px 0;
 }
 
-.btn {
-  flex: 1;
-  padding: 15px;
+.create-room-btn {
+  width: 100%;
+  padding: 20px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
   border: none;
-  border-radius: 10px;
-  font-size: 1rem;
-  font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-
+  
+  &:hover:not(:disabled) {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+  }
+  
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
-  }
-
-  &--primary {
-    background-color: #667eea;
-    color: white;
-
-    &:hover:not(:disabled) {
-      background-color: #5a6fd8;
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-    }
-  }
-
-  &--secondary {
-    background-color: #f8f9fa;
-    color: #333;
-    border: 2px solid #e9ecef;
-
-    &:hover:not(:disabled) {
-      background-color: #e9ecef;
-      border-color: #667eea;
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-    }
   }
 }
 
@@ -596,16 +442,16 @@ onUnmounted(() => {
 
 /* 房间列表 */
 .room-list-section {
-  margin-top: 40px;
+  margin-top: 30px;
   border-top: 1px solid #e9ecef;
-  padding-top: 30px;
+  padding-top: 20px;
 }
 
 .room-list-title {
   font-size: 1.3rem;
   font-weight: 600;
   color: #333;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
   text-align: left;
 }
 
@@ -732,30 +578,31 @@ onUnmounted(() => {
   margin-bottom: 20px;
 }
 
-.modal-form .form-group {
+.form-group {
   margin-bottom: 15px;
-}
+  text-align: left;
 
-.modal-form label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 600;
-  color: #333;
-  font-size: 0.9rem;
-}
+  label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #333;
+    font-size: 0.9rem;
+  }
+  
+  input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
 
-.modal-form input {
-  width: 100%;
-  padding: 12px;
-  border: 2px solid #e9ecef;
-  border-radius: 8px;
-  font-size: 1rem;
-  transition: all 0.3s ease;
-
-  &:focus {
-    outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    &:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
   }
 }
 
@@ -776,10 +623,44 @@ onUnmounted(() => {
   margin-top: 20px;
 }
 
-.modal-buttons .btn {
+.btn {
   flex: 1;
   padding: 12px;
+  border: none;
+  border-radius: 8px;
   font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  
+  &--primary {
+    background-color: #667eea;
+    color: white;
+    
+    &:hover:not(:disabled) {
+      background-color: #5a6fd8;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+  }
+  
+  &--secondary {
+    background-color: #f8f9fa;
+    color: #333;
+    border: 2px solid #e9ecef;
+    
+    &:hover:not(:disabled) {
+      background-color: #e9ecef;
+      border-color: #667eea;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+  }
 }
 
 @keyframes slideIn {

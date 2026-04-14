@@ -55,6 +55,11 @@ function dealCards(players) {
   const deck = shuffleDeck(generateDeck());
   const 地主Cards = deck.splice(0, 3);
   
+  // 先清空玩家的手牌数组
+  for (const player of players) {
+    player.cards = [];
+  }
+  
   // 给三个玩家发牌
   for (let i = 0; i < deck.length; i++) {
     players[i % 3].cards.push(deck[i]);
@@ -321,17 +326,23 @@ class Game {
           player.cards.splice(index, 1);
         }
       }
+
       
       // 更新牌数
       player.cardCount = player.cards.length;
       
       this.lastCards = cards;
       this.lastPlayerId = playerId;
-      
+      // 控制台输出上面三个变量
+      console.log('当前玩家:', playerId);
+      console.log('当前出牌:', cards);
+      console.log('当前牌数:', player.cardCount);
+      console.log('当前牌:', player.cards);
+    
       // 检查是否获胜
       if (player.cards.length === 0) {
         this.status = 'ended';
-        
+      
         // 检查是否春天
         const otherPlayers = this.players.filter(p => p.id !== playerId);
         if (otherPlayers.every(p => p.cards.length === 17)) {
