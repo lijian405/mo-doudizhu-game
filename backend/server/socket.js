@@ -582,14 +582,22 @@ function attachWebSocketHandlers(server, state) {
 
               game.currentPlayerIndex = (game.currentPlayerIndex + 1) % 3;
 
-              hub.broadcastRoomEach(roomId, 'cardsPlayed', (cid) => ({
-                playerId: connectionId,
-                cards: [],
-                players: buildPlayersForConnection(game.players, cid),
-                currentPlayerIndex: game.currentPlayerIndex,
-                gameStatus: game.status,
-                multiplier: game.倍数
-              }));
+              hub.broadcastRoomEach(roomId, 'cardsPlayed', (cid) => {
+                // 计算下家是否能大过最后一家出的牌
+                const nextPlayerIndex = game.currentPlayerIndex;
+                const nextPlayer = game.players[nextPlayerIndex];
+                const canBeatLastCards = canPlayerBeatCards(nextPlayer.cards, game.lastCards);
+                
+                return {
+                  playerId: connectionId,
+                  cards: [],
+                  players: buildPlayersForConnection(game.players, cid),
+                  currentPlayerIndex: game.currentPlayerIndex,
+                  gameStatus: game.status,
+                  multiplier: game.倍数,
+                  canBeatLastCards: cid === nextPlayer.id ? canBeatLastCards : undefined
+                };
+              });
 
               startCountdown(roomId);
             }
