@@ -513,7 +513,12 @@ function attachWebSocketHandlers(server, state) {
                 // 计算下家是否能大过当前出牌
                 const nextPlayerIndex = game.currentPlayerIndex;
                 const nextPlayer = game.players[nextPlayerIndex];
-                const canBeatLastCards = canPlayerBeatCards(nextPlayer.cards, cards);
+                let canBeatLastCards = true;
+                
+                // 如果最后是自己出的牌就不要判断
+                if (game.lastPlayerId !== nextPlayer.id) {
+                  canBeatLastCards = canPlayerBeatCards(nextPlayer.cards, cards);
+                }
                 
                 return {
                   playerId: connectionId,
@@ -586,7 +591,12 @@ function attachWebSocketHandlers(server, state) {
                 // 计算下家是否能大过最后一家出的牌
                 const nextPlayerIndex = game.currentPlayerIndex;
                 const nextPlayer = game.players[nextPlayerIndex];
-                const canBeatLastCards = canPlayerBeatCards(nextPlayer.cards, game.lastCards);
+                let canBeatLastCards = true;
+                
+                // 如果最后是自己出的牌就不要判断
+                if (game.lastPlayerId !== nextPlayer.id) {
+                  canBeatLastCards = canPlayerBeatCards(nextPlayer.cards, game.lastCards);
+                }
                 
                 return {
                   playerId: connectionId,
