@@ -1,6 +1,6 @@
 const express = require('express');
 const crypto = require('crypto');
-const { getRooms, deleteRoom } = require('../../db/db');
+const { getRooms, deleteRoom, getParameters, updateParameter } = require('../../db/db');
 const state = require('../state');
 const { getAdminContext } = require('../adminContext');
 
@@ -70,7 +70,7 @@ router.get('/rooms', requireAdmin, async (req, res) => {
     const dbRows = await getRooms();
     const byId = new Map();
     for (const r of memory) {
-      byId.set(r.id, { ...r, source: 'memory' });
+      byId.set(r.id, { ...r, source: 'memory', hasPassword: r.hasPassword || false });
     }
     for (const row of dbRows) {
       const id = row.room_id;
@@ -86,7 +86,8 @@ router.get('/rooms', requireAdmin, async (req, res) => {
           playerCount: row.player_count || 0,
           maxPlayers: row.max_players || 3,
           roomStatus: row.status === 'playing' ? 'playing' : 'waiting',
-          source: 'db_only'
+          source: 'db_only',
+          hasPassword: false
         });
       }
     }
@@ -121,6 +122,28 @@ router.put('/cheat-target', requireAdmin, express.json(), (req, res) => {
   state.runtime.cheatTargetPlayerName =
     typeof name === 'string' ? name.trim() : '';
   res.json({ cheatTargetPlayerName: state.runtime.cheatTargetPlayerName });
+});
+
+router.get('/parameters', requireAdmin, async (req, res) => {
+  try {
+    const parameters = await getParameters();
+    res.json({ parameters });
+  } catch (e) {
+    console.error('admin get parameters', e);
+    res.status(500).json({ error: '获取参数失败' });
+  }
+});
+
+router.put('/parameters/:key', requireAdmin, express.json(), async (req, res) => {
+  const { key } = req.params;
+  const { value, description } = req.body;
+  try {
+    await updateParameter(key, value, description);
+    res.json({ success: true });
+  } catch (e) {
+    console.error('admin update parameter', e);
+    res.status(500).json({ error: '更新参数失败' });
+  }
 });
 
 module.exports = router;

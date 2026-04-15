@@ -6,7 +6,7 @@ const pool = mysql.createPool({
   user: 'root',
   password: '@wZkVJ$NWnL!RQV$uHHw3N*k3',
   database: 'doudizhu',
-  port: 3306,
+  port: 3336,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
@@ -48,6 +48,17 @@ function initDatabase() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `;
   
+  const createParametersTable = `
+    CREATE TABLE IF NOT EXISTS parameters (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      key_name VARCHAR(50) NOT NULL UNIQUE,
+      value VARCHAR(255) NOT NULL,
+      description VARCHAR(255) DEFAULT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `;
+  
   pool.execute(createUsersTable, (err) => {
     if (err) {
       console.error('创建用户表失败:', err);
@@ -77,6 +88,31 @@ function initDatabase() {
       console.error('创建游戏表失败:', err);
     } else {
       console.log('游戏表创建成功');
+    }
+  });
+  
+  pool.execute(createParametersTable, (err) => {
+    if (err) {
+      console.error('创建参数表失败:', err);
+    } else {
+      console.log('参数表创建成功');
+      // 插入默认参数
+      const defaultParams = [
+        ['default_player_score', '1000', '玩家默认分值'],
+        ['room_timeout_minutes', '30', '房间超时时间（分钟）'],
+        ['play_timeout_seconds', '30', '出牌超时时间（秒）']
+      ];
+      defaultParams.forEach(([key, value, desc]) => {
+        pool.execute(
+          'INSERT IGNORE INTO parameters (key_name, value, description) VALUES (?, ?, ?)',
+          [key, value, desc],
+          (insertErr) => {
+            if (insertErr) {
+              console.error(`插入默认参数 ${key} 失败:`, insertErr);
+            }
+          }
+        );
+      });
     }
   });
 }
@@ -207,6 +243,48 @@ function getRoomByRoomId(roomId) {
   });
 }
 
+// 获取所有参数
+function getParameters() {
+  return new Promise((resolve, reject) => {
+    const sql = 'SELECT * FROM parameters ORDER BY key_name';
+    pool.execute(sql, (err, results) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(results);
+      }
+    });
+  });
+}
+
+// 获取单个参数
+function getParameter(keyName) {
+  return new Promise((resolve, reject) => {
+    const sql = 'SELECT * FROM parameters WHERE key_name = ?';
+    pool.execute(sql, [keyName], (err, results) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(results[0]);
+      }
+    });
+  });
+}
+
+// 更新参数
+function updateParameter(keyName, value, description = null) {
+  return new Promise((resolve, reject) => {
+    const sql = 'UPDATE parameters SET value = ?, description = ? WHERE key_name = ?';
+    pool.execute(sql, [value, description, keyName], (err, results) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(results.affectedRows > 0);
+      }
+    });
+  });
+}
+
 module.exports = {
   initDatabase,
   registerUser,
@@ -218,5 +296,8 @@ module.exports = {
   updateRoomStatus,
   deleteRoom,
   getRoomByRoomId,
+  getParameters,
+  getParameter,
+  updateParameter,
   pool
 };

@@ -128,116 +128,116 @@ function countCardValues(cards) {
 // 判断牌型
 function getCardType(cards) {
   if (cards.length === 0) return 'invalid';
-  
-  // 单牌
   if (cards.length === 1) return 'single';
-  
-  // 对子
+
   if (cards.length === 2) {
     if (cards[0].value === cards[1].value) return 'pair';
-    // 王炸
     if ((cards[0].rank === '大王' && cards[1].rank === '小王') || (cards[0].rank === '小王' && cards[1].rank === '大王')) {
       return 'bomb';
     }
     return 'invalid';
   }
-  
-  // 三张牌
+
   if (cards.length === 3) {
     if (cards[0].value === cards[1].value && cards[1].value === cards[2].value) {
       return 'triple';
     }
     return 'invalid';
   }
-  
-  // 炸弹
-  if (cards.length === 4) {
-    if (cards[0].value === cards[1].value && cards[1].value === cards[2].value && cards[2].value === cards[3].value) {
-      return 'bomb';
-    }
-    // 三带一
-    const counts = countCardValues(cards);
-    const values = Object.values(counts);
-    if (values.includes(3) && values.includes(1)) {
-      return 'triple_with_single';
-    }
-    return 'invalid';
+
+  const counts = countCardValues(cards);
+  const countVals = Object.values(counts);
+
+  // 炸弹（4 张相同）
+  if (cards.length === 4 && countVals.length === 1) return 'bomb';
+
+  // 三带一
+  if (cards.length === 4 && countVals.includes(3) && countVals.includes(1)) {
+    return 'triple_with_single';
   }
 
+  if (cards.length === 4) return 'invalid';
+
   // 三带二
-  if (cards.length === 5) {
-    const counts = countCardValues(cards);
-    const values = Object.values(counts);
-    if (values.includes(3) && values.includes(2)) {
-      return 'triple_with_pair';
-    }
-    // 不是三带二则继续往下判断（可能是顺子）
+  if (cards.length === 5 && countVals.includes(3) && countVals.includes(2)) {
+    return 'triple_with_pair';
   }
-  
-  // 四带二
-  if (cards.length === 6) {
-    const counts = countCardValues(cards);
-    const values = Object.values(counts);
-    if (values.includes(4) && (values.includes(1) || values.includes(2))) {
-      return 'four_with_two';
-    }
-    return 'invalid';
+
+  // 四带二（4+1+1 或 4+2）
+  if (cards.length === 6 && countVals.includes(4)) {
+    return 'four_with_two';
   }
-  
-  // 顺子（单顺）
-  if (cards.length >= 5) {
-    const sorted = [...cards].sort((a, b) => a.value - b.value);
-    // 检查是否包含2或王
-    for (const card of sorted) {
-      if (card.value >= 15) return 'invalid';
-    }
-    // 检查是否连续
+
+  // --- 以下为顺序牌型，不匹配时 fall-through 到下一个检查 ---
+  const sorted = [...cards].sort((a, b) => a.value - b.value);
+  const noHighCards = sorted.every(c => c.value < 15);
+
+  // 顺子：>= 5 张，点数唯一且连续，不含 2 和王
+  if (cards.length >= 5 && noHighCards && countVals.every(c => c === 1)) {
+    let ok = true;
     for (let i = 1; i < sorted.length; i++) {
-      if (sorted[i].value !== sorted[i - 1].value + 1) {
-        return 'invalid';
+      if (sorted[i].value !== sorted[i - 1].value + 1) { ok = false; break; }
+    }
+    if (ok) return 'straight';
+  }
+
+  // 连对（双顺）：>= 6 张，偶数，全部为对子且连续
+  if (cards.length >= 6 && cards.length % 2 === 0 && noHighCards && countVals.every(c => c === 2)) {
+    const pairVals = Object.keys(counts).map(Number).sort((a, b) => a - b);
+    let ok = true;
+    for (let i = 1; i < pairVals.length; i++) {
+      if (pairVals[i] !== pairVals[i - 1] + 1) { ok = false; break; }
+    }
+    if (ok) return 'double_straight';
+  }
+
+  // 三顺（飞机不带）：>= 6 张，能被 3 整除，全部为三张且连续
+  if (cards.length >= 6 && cards.length % 3 === 0 && noHighCards && countVals.every(c => c === 3)) {
+    const triVals = Object.keys(counts).map(Number).sort((a, b) => a - b);
+    let ok = true;
+    for (let i = 1; i < triVals.length; i++) {
+      if (triVals[i] !== triVals[i - 1] + 1) { ok = false; break; }
+    }
+    if (ok) return 'triple_straight';
+  }
+
+  // 飞机带翅膀（连续三张 × N + N 张单牌 或 N 对对子）
+  {
+    const entries = Object.entries(counts).map(([v, c]) => [Number(v), c]);
+    const tripleVals = entries.filter(([, c]) => c >= 3).map(([v]) => v).sort((a, b) => a - b);
+
+    if (tripleVals.length >= 2) {
+      const validTriples = tripleVals.filter(v => v < 15);
+      const seqs = [];
+      for (let i = 0; i < validTriples.length; i++) {
+        const seq = [validTriples[i]];
+        while (i + 1 < validTriples.length && validTriples[i + 1] === validTriples[i] + 1) {
+          i++;
+          seq.push(validTriples[i]);
+        }
+        if (seq.length >= 2) seqs.push(seq);
+      }
+
+      for (const seq of seqs) {
+        const planeCount = seq.length;
+        const tripleTotal = planeCount * 3;
+        const wingTotal = cards.length - tripleTotal;
+
+        if (wingTotal === planeCount) {
+          return 'plane_with_singles';
+        }
+        if (wingTotal === planeCount * 2) {
+          const remaining = { ...counts };
+          for (const v of seq) {
+            remaining[v] = (remaining[v] || 0) - 3;
+            if (remaining[v] === 0) delete remaining[v];
+          }
+          if (Object.values(remaining).every(c => c === 2)) return 'plane_with_pairs';
+        }
       }
     }
-    return 'straight';
   }
-  
-  // 双顺
-  if (cards.length >= 6 && cards.length % 2 === 0) {
-    const sorted = [...cards].sort((a, b) => a.value - b.value);
-    // 检查是否包含2或王
-    for (const card of sorted) {
-      if (card.value >= 15) return 'invalid';
-    }
-    // 检查是否是连续的对子
-    for (let i = 0; i < sorted.length; i += 2) {
-      if (sorted[i].value !== sorted[i + 1].value) return 'invalid';
-      if (i > 0 && sorted[i].value !== sorted[i - 1].value + 1) return 'invalid';
-    }
-    return 'double_straight';
-  }
-  
-  // 三顺
-  if (cards.length >= 6 && cards.length % 3 === 0) {
-    const sorted = [...cards].sort((a, b) => a.value - b.value);
-    // 检查是否包含2或王
-    for (const card of sorted) {
-      if (card.value >= 15) return 'invalid';
-    }
-    // 检查是否是连续的三张
-    for (let i = 0; i < sorted.length; i += 3) {
-      if (sorted[i].value !== sorted[i + 1].value || sorted[i + 1].value !== sorted[i + 2].value) {
-        return 'invalid';
-      }
-      if (i > 0 && sorted[i].value !== sorted[i - 1].value + 1) return 'invalid';
-    }
-    return 'triple_straight';
-  }
-  
-  // 飞机带翅膀
-  if (cards.length >= 8 && (cards.length - 3) % 4 === 0) {
-    // 简化处理，实际需要更复杂的逻辑
-    return 'plane_with_wings';
-  }
-  
+
   return 'invalid';
 }
 
@@ -259,6 +259,16 @@ function getCardsValue(cards) {
     for (const [v, c] of Object.entries(counts)) {
       if (c === 4) return Number(v);
     }
+  }
+
+  // 飞机带翅膀：取连续三张中最小的点数
+  if (type === 'plane_with_singles' || type === 'plane_with_pairs') {
+    const tripleVals = Object.entries(counts)
+      .filter(([, c]) => c >= 3)
+      .map(([v]) => Number(v))
+      .filter((v) => v < 15)
+      .sort((a, b) => a - b);
+    if (tripleVals.length >= 2) return tripleVals[0];
   }
 
   // 其它：取最大点数（顺子/对子/三张/炸弹等）
@@ -378,14 +388,14 @@ class Game {
   playCards(playerId, cards) {
     if (playerId !== this.players[this.currentPlayerIndex].id) return false;
     
-    // 如果出牌区的牌是当前玩家出的，则允许出任意牌
-    if (!(this.lastPlayerId === playerId || canPlay(cards, this.lastCards))) return false;
+    const cardType = getCardType(cards);
+    if (cardType === 'invalid') return false;
+    // 轮回到自己：不需要压过上一手，但必须是合法牌型
+    if (this.lastPlayerId !== playerId && !canPlay(cards, this.lastCards)) return false;
     
     // 从玩家手中移除牌
     const player = this.players.find(p => p.id === playerId);
     if (player) {
-      // 检查是否是炸弹
-      const cardType = getCardType(cards);
       if (cardType === 'bomb') {
         this.炸弹数量++;
         this.倍数 *= 2;

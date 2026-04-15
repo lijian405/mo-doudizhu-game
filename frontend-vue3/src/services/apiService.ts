@@ -94,7 +94,30 @@ export const roomApi = {
   }
 }
 
+// 获取参数
+export const configApi = {
+  getParameter: async (key: string, defaultValue: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/parameters/${key}`)
+      if (response.ok) {
+        const data = await response.json()
+        return data.value
+      } else if (response.status === 404) {
+        // 参数不存在，返回默认值
+        return defaultValue
+      } else {
+        throw new Error('获取参数失败')
+      }
+    } catch (error) {
+      console.error(`获取参数 ${key} 失败:`, error)
+      // 出错时返回默认值
+      return defaultValue
+    }
+  }
+}
+
 // 导出默认API服务
 export default {
-  room: roomApi
+  room: roomApi,
+  config: configApi
 }

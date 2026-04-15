@@ -1,7 +1,7 @@
 const { randomUUID } = require('crypto');
 const { WebSocketServer, WebSocket } = require('ws');
 const { Game } = require('../game/gameLogic');
-const { updateRoomStatus, deleteRoom, getRoomByRoomId } = require('../db/db');
+const { updateRoomStatus, deleteRoom, getRoomByRoomId, getParameter } = require('../db/db');
 const { WsHub } = require('./wsHub');
 const { setAdminContext } = require('./adminContext');
 
@@ -15,7 +15,21 @@ function attachWebSocketHandlers(server, state) {
   const wss = new WebSocketServer({ server, path: '/ws' });
   /** @type {Map<string, { startedAt: number, interval: NodeJS.Timeout }>} */
   const roomTimers = new Map();
-  const ROOM_MAX_SECONDS = 30 * 60;
+  let ROOM_MAX_SECONDS = 30 * 60;
+  
+  // 从数据库加载配置
+  async function loadConfig() {
+    try {
+      const roomTimeoutParam = await getParameter('room_timeout_minutes');
+      if (roomTimeoutParam) {
+        ROOM_MAX_SECONDS = parseInt(roomTimeoutParam.value) * 60;
+      }
+    } catch (e) {
+      console.error('加载配置失败:', e);
+    }
+  }
+  
+  loadConfig();
 
   function stopRoomTimer(roomId) {
     const t = roomTimers.get(roomId);
@@ -45,7 +59,7 @@ function attachWebSocketHandlers(server, state) {
         }
         hub.broadcastRoom(roomId, 'gameAborted', {
           roomId,
-          message: '房间计时超过30分钟，游戏已结束'
+          message: `房间计时超过${ROOM_MAX_SECONDS / 60}分钟，游戏已结束`
         });
         broadcastRoomList();
       }
@@ -86,6 +100,18 @@ function attachWebSocketHandlers(server, state) {
 
   function broadcastRoomList() {
     hub.broadcastAll('roomListUpdated', { rooms: buildRoomListPayload() });
+  }
+
+  /**
+   * 生成玩家视角的 players 数组：自己能看到 cards，其他人只能看到 cardCount
+   */
+  function buildPlayersForConnection(gamePlayers, viewerId) {
+    return gamePlayers.map((p) => {
+      if (p.id === viewerId) {
+        return { id: p.id, name: p.name, cards: p.cards, cardCount: p.cards.length };
+      }
+      return { id: p.id, name: p.name, cardCount: p.cards.length };
+    });
   }
 
   function startCountdown(roomId) {
@@ -133,18 +159,15 @@ function attachWebSocketHandlers(server, state) {
 
         game.currentPlayerIndex = (game.currentPlayerIndex + 1) % 3;
 
-        hub.broadcastRoom(roomId, 'cardsPlayed', {
-          playerId: game.players[(game.currentPlayerIndex + 2) % 3].id,
+        const passPlayerId = game.players[(game.currentPlayerIndex + 2) % 3].id;
+        hub.broadcastRoomEach(roomId, 'cardsPlayed', (cid) => ({
+          playerId: passPlayerId,
           cards: [],
-          players: game.players.map((p) => ({
-            id: p.id,
-            name: p.name,
-            cards: p.cards
-          })),
+          players: buildPlayersForConnection(game.players, cid),
           currentPlayerIndex: game.currentPlayerIndex,
           gameStatus: game.status,
           multiplier: game.倍数
-        });
+        }));
 
         startCountdown(roomId);
       }
@@ -413,17 +436,13 @@ function attachWebSocketHandlers(server, state) {
               startRoomTimer(roomId);
               hub.broadcastRoom(roomId, 'callingStart', { roomId });
 
-              hub.broadcastRoom(roomId, 'gameStarted', {
+              hub.broadcastRoomEach(roomId, 'gameStarted', (cid) => ({
                 room: {
                   id: room.id,
                   players: room.players.map((p) => ({ id: p.id, name: p.name })),
                   status: room.status
                 },
-                players: game.players.map((p) => ({
-                  id: p.id,
-                  name: p.name,
-                  cards: p.cards
-                })),
+                players: buildPlayersForConnection(game.players, cid),
                 landlordCards: game.地主Cards,
                 landlordPlayerId: game.地主PlayerId,
                 currentPlayerIndex: game.currentPlayerIndex,
@@ -434,7 +453,7 @@ function attachWebSocketHandlers(server, state) {
                   highestScore: game.叫牌状态.highestScore,
                   highestBidder: game.叫牌状态.highestBidder
                 }
-              });
+              }));
 
               broadcastRoomList();
               console.log(`房间${roomId}开始游戏`);
@@ -458,24 +477,20 @@ function attachWebSocketHandlers(server, state) {
 
                 if (game.status === 'playing') {
                   const room = rooms.get(roomId);
-                  hub.broadcastRoom(roomId, 'gameStarted', {
+                  hub.broadcastRoomEach(roomId, 'gameStarted', (cid) => ({
                     room: {
                       id: room.id,
                       players: room.players.map((p) => ({ id: p.id, name: p.name })),
                       status: room.status
                     },
-                    players: game.players.map((p) => ({
-                      id: p.id,
-                      name: p.name,
-                      cards: p.cards
-                    })),
+                    players: buildPlayersForConnection(game.players, cid),
                     landlordCards: game.地主Cards,
                     landlordPlayerId: game.地主PlayerId,
                     currentPlayerIndex: game.currentPlayerIndex,
                     baseScore: game.底分,
                     multiplier: game.倍数,
                     gameStarted: true
-                  });
+                  }));
 
                   startCountdown(roomId);
                   broadcastRoomList();
@@ -494,18 +509,14 @@ function attachWebSocketHandlers(server, state) {
             if (success) {
               stopCountdown(roomId);
 
-              hub.broadcastRoom(roomId, 'cardsPlayed', {
+              hub.broadcastRoomEach(roomId, 'cardsPlayed', (cid) => ({
                 playerId: connectionId,
                 cards,
-                players: game.players.map((p) => ({
-                  id: p.id,
-                  name: p.name,
-                  cards: p.cards
-                })),
+                players: buildPlayersForConnection(game.players, cid),
                 currentPlayerIndex: game.currentPlayerIndex,
                 gameStatus: game.status,
                 multiplier: game.倍数
-              });
+              }));
 
               if (game.status === 'ended') {
                 stopRoomTimer(roomId);
@@ -563,18 +574,14 @@ function attachWebSocketHandlers(server, state) {
 
               game.currentPlayerIndex = (game.currentPlayerIndex + 1) % 3;
 
-              hub.broadcastRoom(roomId, 'cardsPlayed', {
+              hub.broadcastRoomEach(roomId, 'cardsPlayed', (cid) => ({
                 playerId: connectionId,
                 cards: [],
-                players: game.players.map((p) => ({
-                  id: p.id,
-                  name: p.name,
-                  cards: p.cards
-                })),
+                players: buildPlayersForConnection(game.players, cid),
                 currentPlayerIndex: game.currentPlayerIndex,
                 gameStatus: game.status,
                 multiplier: game.倍数
-              });
+              }));
 
               startCountdown(roomId);
             }

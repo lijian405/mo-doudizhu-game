@@ -82,6 +82,23 @@ class WsHub {
     }
   }
 
+  /**
+   * 向房间内每个连接发送定制化消息（payload 按连接 ID 生成）
+   * @param {string} roomId
+   * @param {string} type
+   * @param {(connectionId: string) => unknown} buildPayload
+   */
+  broadcastRoomEach(roomId, type, buildPayload) {
+    const set = this.roomMembers.get(roomId);
+    if (!set) return;
+    for (const cid of set) {
+      const c = this.connections.get(cid);
+      if (c && c.ws.readyState === WebSocket.OPEN) {
+        c.ws.send(JSON.stringify({ type, payload: buildPayload(cid) }));
+      }
+    }
+  }
+
   /** @param {string} type @param {unknown} [payload] */
   broadcastAll(type, payload) {
     const msg = JSON.stringify({ type, payload: payload ?? {} });

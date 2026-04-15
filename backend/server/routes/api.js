@@ -4,7 +4,8 @@ const {
   getRooms,
   updateRoomStatus,
   deleteRoom,
-  getRoomByRoomId
+  getRoomByRoomId,
+  getParameter
 } = require('../../db/db');
 
 const router = express.Router();
@@ -75,6 +76,22 @@ router.delete('/rooms/:id', async (req, res) => {
   } catch (error) {
     console.error('删除房间失败:', error);
     res.status(500).json({ error: '删除房间失败' });
+  }
+});
+
+// 获取单个参数
+router.get('/parameters/:key', async (req, res) => {
+  try {
+    const { key } = req.params;
+    const param = await getParameter(key);
+    if (param) {
+      res.json({ value: param.value, description: param.description });
+    } else {
+      res.status(404).json({ error: '参数不存在' });
+    }
+  } catch (error) {
+    console.error('获取参数失败:', error);
+    res.status(500).json({ error: '获取参数失败' });
   }
 });
 

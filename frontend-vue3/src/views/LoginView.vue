@@ -143,6 +143,7 @@ import { useSocket } from '@/composables/useSocket'
 import { roomApi } from '@/services/apiService'
 import GameMessage from '@/components/GameMessage.vue'
 import { validatePlayerName, generateRoomId } from '@/utils/gameHelper'
+import { configApi } from '@/services/apiService'
 import type { RoomUpdatedData, GameStartedData, RoomListItem, RoomListData, JoinRoomFailedData } from '@/types'
 
 const router = useRouter()
@@ -173,6 +174,9 @@ const selectedRoomHasPassword = ref(false)
 const showMessage = ref(false)
 const messageText = ref('')
 const messageType = ref<'error' | 'success' | 'info'>('info')
+
+// 默认分值
+const defaultPlayerScore = ref(1000)
 
 // 显示消息
 const showToast = (message: string, type: 'error' | 'success' | 'info' = 'info') => {
@@ -225,7 +229,7 @@ const handleJoinRoomModal = () => {
     id: '', // 服务器会分配
     name: joinPlayerName.value.trim(),
     roomId: selectedRoomId.value,
-    score: 1000
+    score: defaultPlayerScore.value
   })
 
   // 发送加入房间请求
@@ -327,7 +331,7 @@ const handleCreateRoomModal = () => {
     id: '', // 服务器会分配
     name: createPlayerName.value.trim(),
     roomId: newRoomId,
-    score: 1000
+    score: defaultPlayerScore.value
   })
 
   const roomPassword = createRoomPassword.value.trim() || undefined
@@ -351,13 +355,26 @@ const handleCreateRoomModal = () => {
 
 let intervalId: number | null = null
 
-onMounted(() => {
+// 加载默认参数
+const loadDefaults = async () => {
+  try {
+    const scoreValue = await configApi.getParameter('default_player_score', '10')
+    defaultPlayerScore.value = parseInt(scoreValue)
+  } catch (error) {
+    console.error('加载默认参数失败:', error)
+  }
+}
+
+onMounted(async () => {
   // 注册事件监听
   socket.on('roomUpdated', handleRoomUpdated)
   socket.on('gameStarted', handleGameStarted)
   socket.on('onlineCountUpdated', handleOnlineCountUpdated)
   socket.on('roomListUpdated', handleRoomListUpdated)
   socket.on('joinRoomFailed', handleJoinRoomFailed)
+  
+  // 加载默认参数
+  await loadDefaults()
   
   // 加载房间列表 (API)
   loadRooms()

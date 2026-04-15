@@ -341,8 +341,6 @@ const handleCallingUpdated = (data: CallingUpdatedData) => {
 
 // 监听游戏开始
 const handleGameStarted = (data: any) => {
-  console.log('游戏开始:', data)
-  console.log('玩家数据:', data.players)
   // 检查是否是游戏真正开始（叫分结束）
   if (data.gameStarted) {
     // 隐藏叫分弹窗
@@ -398,7 +396,6 @@ const handleGameStarted = (data: any) => {
       myPlayerData = data.players.find((p: any) => p.name === playerStore.playerName)
     }
     if (myPlayerData) {
-      console.log('我的牌:', myPlayerData.cards)
       gameStore.setMyCards(myPlayerData.cards)
       // 如果找到玩家数据，更新 playerId
       if (myPlayerData.id && playerStore.playerId === '') {

@@ -16,9 +16,9 @@ export interface PlayerBase {
   score: number
 }
 
-// 游戏中的玩家
+// 游戏中的玩家（cards 仅自己可见，其他人只有 cardCount）
 export interface Player extends PlayerBase {
-  cards: Card[]
+  cards?: Card[]
   cardCount: number
 }
 

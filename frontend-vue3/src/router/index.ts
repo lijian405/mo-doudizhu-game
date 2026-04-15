@@ -8,6 +8,7 @@ import AdminLayout from '@/views/admin/AdminLayout.vue'
 import AdminOnlineView from '@/views/admin/AdminOnlineView.vue'
 import AdminRoomsView from '@/views/admin/AdminRoomsView.vue'
 import AdminCheatView from '@/views/admin/AdminCheatView.vue'
+import AdminParametersView from '@/views/admin/AdminParametersView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -30,6 +31,7 @@ const router = createRouter({
         { path: '', redirect: '/admin/online' },
         { path: 'online', name: 'admin-online', component: AdminOnlineView },
         { path: 'rooms', name: 'admin-rooms', component: AdminRoomsView },
+        { path: 'parameters', name: 'admin-parameters', component: AdminParametersView },
         { path: 'cheat', name: 'admin-cheat', component: AdminCheatView }
       ]
     },

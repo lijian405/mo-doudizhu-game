@@ -39,6 +39,16 @@ export interface AdminRoomRow {
   source?: string
   dbStatus?: string
   dbPlayerCount?: number
+  hasPassword?: boolean
+}
+
+export interface AdminParameter {
+  id: number
+  key_name: string
+  value: string
+  description: string
+  created_at: string
+  updated_at: string
 }
 
 export const adminApi = {
@@ -74,5 +84,14 @@ export const adminApi = {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ cheatTargetPlayerName })
+    }),
+
+  getParameters: () => adminFetch<{ parameters: AdminParameter[] }>('/parameters'),
+
+  updateParameter: (key: string, value: string, description?: string) =>
+    adminFetch<{ success: boolean }>(`/parameters/${encodeURIComponent(key)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value, description })
     })
 }

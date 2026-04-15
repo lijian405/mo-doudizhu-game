@@ -53,6 +53,7 @@ onMounted(load)
             <th>状态</th>
             <th>人数</th>
             <th>玩家</th>
+            <th>密码</th>
             <th>来源</th>
             <th />
           </tr>
@@ -63,13 +64,14 @@ onMounted(load)
             <td>{{ statusLabel(r) }}</td>
             <td>{{ r.playerCount }} / {{ r.maxPlayers ?? 3 }}</td>
             <td class="names">{{ r.players?.map((p) => p.name).join('、') || '—' }}</td>
+            <td>{{ r.hasPassword ? '有' : '无' }}</td>
             <td>{{ r.source === 'db_only' ? '仅数据库' : '内存' }}</td>
             <td>
               <button type="button" class="btn danger" @click="removeRoom(r.id)">删除</button>
             </td>
           </tr>
           <tr v-if="!loading && rooms.length === 0">
-            <td colspan="6" class="empty">暂无房间</td>
+            <td colspan="7" class="empty">暂无房间</td>
           </tr>
         </tbody>
       </table>

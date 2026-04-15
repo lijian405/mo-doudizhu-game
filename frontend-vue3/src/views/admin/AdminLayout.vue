@@ -7,6 +7,7 @@ const router = useRouter()
 const menu = [
   { path: '/admin/online', label: '在线玩家' },
   { path: '/admin/rooms', label: '房间列表' },
+  { path: '/admin/parameters', label: '参数配置' },
   { path: '/admin/cheat', label: '作弊功能' }
 ]
 
