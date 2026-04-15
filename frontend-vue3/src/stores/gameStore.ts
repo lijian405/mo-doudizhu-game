@@ -143,6 +143,16 @@ export const useGameStore = defineStore('game', () => {
     selectedCards.value = []
   }
 
+  const setSelectedCards = (cards: Card[]) => {
+    // 用 myCards 里的引用来设置选中（避免对象引用不同导致 UI 不一致）
+    const byKey = new Map<string, Card>()
+    for (const c of myCards.value) {
+      byKey.set(`${c.suit}|${c.rank}`, c)
+    }
+    selectedCards.value = (cards || [])
+      .map(c => byKey.get(`${c.suit}|${c.rank}`) ?? c)
+  }
+
   const addPlayedCards = (played: PlayedCards) => {
     playedCards.value.push(played)
   }
@@ -266,6 +276,7 @@ export const useGameStore = defineStore('game', () => {
     setMyCards,
     toggleCardSelection,
     clearSelectedCards,
+    setSelectedCards,
     addPlayedCards,
     updateCurrentPlayer,
     updateGameStatus,

@@ -1,6 +1,6 @@
 const { randomUUID } = require('crypto');
 const { WebSocketServer, WebSocket } = require('ws');
-const { Game, canPlayerBeatCards } = require('../game/gameLogic');
+const { Game, canPlayerBeatCards, getHintCards } = require('../game/gameLogic');
 const { updateRoomStatus, deleteRoom, getRoomByRoomId, getParameter } = require('../db/db');
 const { WsHub } = require('./wsHub');
 const { setAdminContext } = require('./adminContext');
@@ -611,6 +611,34 @@ function attachWebSocketHandlers(server, state) {
 
               startCountdown(roomId);
             }
+            break;
+          }
+
+          case 'hintRequest': {
+            const { roomId } = data;
+            const game = games.get(roomId);
+            if (!game) {
+              hub.sendTo(connectionId, 'hintResult', { cards: [], message: '游戏不存在' });
+              break;
+            }
+
+            const current = game.players[game.currentPlayerIndex];
+            if (!current || current.id !== connectionId) {
+              hub.sendTo(connectionId, 'hintResult', { cards: [], message: '还没轮到您' });
+              break;
+            }
+
+            const isFreeTurn = !game.lastCards || game.lastCards.length === 0 || game.lastPlayerId === connectionId;
+            const hintCards = getHintCards(current.cards, game.lastCards, isFreeTurn);
+            if (!hintCards || hintCards.length === 0) {
+              hub.sendTo(connectionId, 'hintResult', {
+                cards: [],
+                message: isFreeTurn ? '没有可用的牌' : '没有更大的牌了'
+              });
+              break;
+            }
+
+            hub.sendTo(connectionId, 'hintResult', { cards: hintCards });
             break;
           }
 

@@ -12,7 +12,8 @@ import type {
   StartGameData,
   CallLandlordData,
   PlayCardsData,
-  PassData
+  PassData,
+  HintRequestData
 } from '@/types'
 
 function getWsUrl(): string {
@@ -166,6 +167,7 @@ export function useSocket() {
   const callLandlord = (data: CallLandlordData) => emit('callLandlord', data)
   const playCards = (data: PlayCardsData) => emit('playCards', data)
   const pass = (data: PassData) => emit('pass', data)
+  const hintRequest = (data: HintRequestData) => emit('hintRequest', data)
   const getRooms = () => emit('getRooms')
 
   onMounted(() => {
@@ -189,6 +191,7 @@ export function useSocket() {
     callLandlord,
     playCards,
     pass,
+    hintRequest,
     getRooms
   }
 }

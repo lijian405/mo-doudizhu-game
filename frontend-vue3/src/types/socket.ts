@@ -48,6 +48,11 @@ export interface PassData {
   roomId: string
 }
 
+// 提示（请求最优出牌方案）
+export interface HintRequestData {
+  roomId: string
+}
+
 // ==================== 服务器发送事件 ====================
 
 // 房间更新
@@ -111,6 +116,11 @@ export interface PlayCardsFailedData {
   message: string
 }
 
+export interface HintResultData {
+  cards: Card[]
+  message?: string
+}
+
 // 房间列表
 export interface RoomListData {
   rooms: RoomListItem[]
@@ -149,6 +159,7 @@ export const SocketEvents = {
   CALL_LANDLORD: 'callLandlord',
   PLAY_CARDS: 'playCards',
   PASS: 'pass',
+  HINT_REQUEST: 'hintRequest',
   GET_ROOMS: 'getRooms',
 
   // 服务器发送
@@ -166,6 +177,7 @@ export const SocketEvents = {
   CALLING_START: 'callingStart',
   ROOM_DELETED: 'roomDeleted',
   ROOM_TIMER_UPDATED: 'roomTimerUpdated',
+  HINT_RESULT: 'hintResult',
   GET_ONLINE_COUNT: 'getOnlineCount'
 } as const
 
@@ -189,6 +201,7 @@ export interface ServerToClientEvents {
   callingStart: (data: CallingStartData) => void
   roomDeleted: (data: RoomDeletedData) => void
   roomTimerUpdated: (data: RoomTimerUpdatedData) => void
+  hintResult: (data: HintResultData) => void
 }
 
 export interface ClientToServerEvents {
@@ -199,6 +212,7 @@ export interface ClientToServerEvents {
   callLandlord: (data: CallLandlordData) => void
   playCards: (data: PlayCardsData) => void
   pass: (data: PassData) => void
+  hintRequest: (data: HintRequestData) => void
   getRooms: () => void
   getOnlineCount: () => void
 }

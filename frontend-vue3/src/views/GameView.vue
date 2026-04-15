@@ -149,6 +149,14 @@
             </button>
             <button
               type="button"
+              class="btn btn--hint btn--game-action"
+              :disabled="!gameStore.isMyTurn || isHintLoading"
+              @click="handleHint"
+            >
+              提示
+            </button>
+            <button
+              type="button"
               class="btn btn--play btn--game-action"
               :disabled="!gameStore.isMyTurn || gameStore.selectedCards.length === 0"
               @click="handlePlayCards"
@@ -200,7 +208,8 @@ import type {
   CallingUpdatedData,
   GameAbortedData,
   CallingInfo,
-  RoomTimerUpdatedData
+  RoomTimerUpdatedData,
+  HintResultData
 } from '@/types'
 
 const router = useRouter()
@@ -234,6 +243,7 @@ const animationDirection = ref<'left' | 'right' | 'bottom'>('bottom')
 
 // 是否能大过上家出的牌
 const canBeatLastCards = ref(true)
+const isHintLoading = ref(false)
 
 // 计算属性
 const leftPlayer = computed(() => roomStore.getPlayerByPosition(0))
@@ -409,6 +419,19 @@ const handlePass = () => {
   socket.pass({
     roomId: roomStore.roomId
   })
+}
+
+const handleHint = () => {
+  if (!gameStore.isMyTurn) {
+    showToast('还没轮到您', 'error')
+    return
+  }
+  isHintLoading.value = true
+  socket.hintRequest({ roomId: roomStore.roomId })
+  // 兜底：避免网络异常导致一直 loading
+  setTimeout(() => {
+    isHintLoading.value = false
+  }, 1500)
 }
 // 叫分相关方法
 const canCallScore = (score: number): boolean => {
@@ -631,6 +654,15 @@ const handlePlayCardsFailed = (data: PlayCardsFailedData) => {
   gameStore.clearSelectedCards()
 }
 
+const handleHintResult = (data: HintResultData) => {
+  isHintLoading.value = false
+  if (data.cards?.length) {
+    gameStore.setSelectedCards(data.cards)
+    return
+  }
+  showToast(data.message || '没有更大的牌了', 'info')
+}
+
 const handleGameAborted = (data: GameAbortedData) => {
   if (data.roomId !== roomStore.roomId) return
   showToast(data.message, 'info')
@@ -660,6 +692,7 @@ onMounted(() => {
   socket.on('gameStarted', handleGameStarted)
   socket.on('gameAborted', handleGameAborted)
   socket.on('roomTimerUpdated', handleRoomTimerUpdated)
+  socket.on('hintResult', handleHintResult)
 })
 
 onUnmounted(() => {
@@ -671,6 +704,7 @@ onUnmounted(() => {
   socket.off('gameStarted', handleGameStarted)
   socket.off('gameAborted', handleGameAborted)
   socket.off('roomTimerUpdated', handleRoomTimerUpdated)
+  socket.off('hintResult', handleHintResult)
 })
 </script>
 
@@ -847,6 +881,34 @@ onUnmounted(() => {
       0 2px 0 #0c3066,
       0 4px 12px rgba(13, 61, 110, 0.35),
       inset 0 -2px 6px rgba(15, 60, 120, 0.25);
+  }
+}
+
+// 提示：绿色渐变 + 深绿描边字
+.action-buttons .btn--hint.btn--game-action {
+  text-shadow:
+    0 2px 0 rgba(0, 60, 20, 0.35),
+    0 1px 2px rgba(0, 0, 0, 0.25);
+  -webkit-text-stroke: 1.5px #0f5a2a;
+  paint-order: stroke fill;
+
+  background: linear-gradient(
+    180deg,
+    #b7f7b1 0%,
+    #4ade80 38%,
+    #22c55e 72%,
+    #16a34a 100%
+  );
+  box-shadow:
+    0 5px 0 #0f6b35,
+    0 8px 18px rgba(10, 80, 40, 0.35),
+    inset 0 -3px 8px rgba(10, 80, 40, 0.25);
+
+  &:active:not(:disabled) {
+    box-shadow:
+      0 2px 0 #0f6b35,
+      0 4px 10px rgba(10, 80, 40, 0.3),
+      inset 0 -2px 4px rgba(10, 80, 40, 0.2);
   }
 }
 

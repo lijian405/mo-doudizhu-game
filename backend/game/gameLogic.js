@@ -314,112 +314,499 @@ function canPlay(cards, lastCards) {
 // 判断玩家是否有能大过指定牌的牌
 function canPlayerBeatCards(playerCards, lastCards) {
   if (!lastCards || lastCards.length === 0) return true;
-  
+
   const lastType = getCardType(lastCards);
   if (lastType === 'invalid') return true;
-  
-  // 检查是否有火箭
-  const hasKingBomb = playerCards.some(card => card.rank === '大王') && 
-                     playerCards.some(card => card.rank === '小王');
-  if (hasKingBomb) return true;
-  
-  // 检查是否有比当前炸弹大的炸弹
+
+  const lastValue = getCardsValue(lastCards);
+  const counts = countCardValues(playerCards);
+
+  // 火箭（王炸）可以打任何牌
+  const hasRocket = playerCards.some(c => c.rank === '大王') &&
+                    playerCards.some(c => c.rank === '小王');
+  if (hasRocket) return true;
+
+  // 炸弹判断
   if (lastType === 'bomb') {
-    const lastValue = getCardsValue(lastCards);
-    // 检查是否有更大的炸弹
-    const counts = countCardValues(playerCards);
-    for (const [value, count] of Object.entries(counts)) {
-      if (count >= 4 && Number(value) > lastValue) {
-        return true;
-      }
+    for (const [v, c] of Object.entries(counts)) {
+      if (c >= 4 && Number(v) > lastValue) return true;
     }
   } else {
-    // 检查是否有炸弹
-    const counts = countCardValues(playerCards);
-    for (const count of Object.values(counts)) {
-      if (count >= 4) {
-        return true;
-      }
+    for (const c of Object.values(counts)) {
+      if (c >= 4) return true;
     }
   }
-  
-  // 检查相同类型的牌
-  // 这里简化处理，只检查单牌、对子、三张和炸弹
-  // 对于其他复杂牌型（如顺子、飞机等），可能需要更复杂的逻辑
-  
-  // 检查单牌
-  if (lastType === 'single') {
-    const lastValue = getCardsValue(lastCards);
-    for (const card of playerCards) {
-      if (card.value > lastValue) {
-        return true;
+
+  // 辅助：在 valSet 中查找长度为 len、最小值 > minStart 的连续序列
+  function hasConsecutiveRun(valSet, len, minStart) {
+    for (let s = minStart; s <= 15 - len; s++) {
+      let ok = true;
+      for (let i = 0; i < len; i++) {
+        if (!valSet.has(s + i)) { ok = false; break; }
       }
+      if (ok) return s;
     }
+    return -1;
   }
-  
-  // 检查对子
-  if (lastType === 'pair') {
-    const lastValue = getCardsValue(lastCards);
-    const counts = countCardValues(playerCards);
-    for (const [value, count] of Object.entries(counts)) {
-      if (count >= 2 && Number(value) > lastValue) {
-        return true;
+
+  switch (lastType) {
+    case 'single': {
+      for (const card of playerCards) {
+        if (card.value > lastValue) return true;
       }
+      break;
     }
-  }
-  
-  // 检查三张
-  if (lastType === 'triple') {
-    const lastValue = getCardsValue(lastCards);
-    const counts = countCardValues(playerCards);
-    for (const [value, count] of Object.entries(counts)) {
-      if (count >= 3 && Number(value) > lastValue) {
-        return true;
+
+    case 'pair': {
+      for (const [v, c] of Object.entries(counts)) {
+        if (c >= 2 && Number(v) > lastValue) return true;
       }
+      break;
     }
-  }
-  
-  // 检查三带一
-  if (lastType === 'triple_with_single') {
-    const lastValue = getCardsValue(lastCards);
-    const counts = countCardValues(playerCards);
-    for (const [value, count] of Object.entries(counts)) {
-      if (count >= 3 && Number(value) > lastValue) {
-        // 检查是否有单牌可以带
-        let singleCount = 0;
-        for (const [v, c] of Object.entries(counts)) {
-          if (v !== value) {
-            singleCount += c;
+
+    case 'triple': {
+      for (const [v, c] of Object.entries(counts)) {
+        if (c >= 3 && Number(v) > lastValue) return true;
+      }
+      break;
+    }
+
+    case 'triple_with_single': {
+      for (const [v, c] of Object.entries(counts)) {
+        if (c >= 3 && Number(v) > lastValue) {
+          let others = 0;
+          for (const [v2, c2] of Object.entries(counts)) {
+            if (v2 !== v) others += c2;
+          }
+          if (others >= 1) return true;
+        }
+      }
+      break;
+    }
+
+    case 'triple_with_pair': {
+      for (const [v, c] of Object.entries(counts)) {
+        if (c >= 3 && Number(v) > lastValue) {
+          for (const [v2, c2] of Object.entries(counts)) {
+            if (v2 !== v && c2 >= 2) return true;
           }
         }
-        if (singleCount >= 1) {
-          return true;
-        }
       }
+      break;
     }
-  }
-  
-  // 检查三带二
-  if (lastType === 'triple_with_pair') {
-    const lastValue = getCardsValue(lastCards);
-    const counts = countCardValues(playerCards);
-    for (const [value, count] of Object.entries(counts)) {
-      if (count >= 3 && Number(value) > lastValue) {
-        // 检查是否有对子可以带
-        let pairCount = 0;
-        for (const [v, c] of Object.entries(counts)) {
-          if (v !== value && c >= 2) {
-            pairCount++;
+
+    case 'four_with_two': {
+      for (const [v, c] of Object.entries(counts)) {
+        if (c >= 4 && Number(v) > lastValue) {
+          let others = 0;
+          for (const [v2, c2] of Object.entries(counts)) {
+            if (v2 !== v) others += c2;
           }
-        }
-        if (pairCount >= 1) {
-          return true;
+          if (others >= 2) return true;
         }
       }
+      break;
+    }
+
+    case 'straight': {
+      const len = lastCards.length;
+      const available = new Set(
+        Object.keys(counts).map(Number).filter(v => v < 15)
+      );
+      // lastValue 是顺子最大值，新顺子最大值须 > lastValue，即起始 s > lastValue - len + 1
+      if (hasConsecutiveRun(available, len, lastValue - len + 2) >= 0) return true;
+      break;
+    }
+
+    case 'double_straight': {
+      const pairLen = lastCards.length / 2;
+      const pairSet = new Set(
+        Object.entries(counts)
+          .filter(([v, c]) => c >= 2 && Number(v) < 15)
+          .map(([v]) => Number(v))
+      );
+      if (hasConsecutiveRun(pairSet, pairLen, lastValue - pairLen + 2) >= 0) return true;
+      break;
+    }
+
+    case 'triple_straight': {
+      const triLen = lastCards.length / 3;
+      const triSet = new Set(
+        Object.entries(counts)
+          .filter(([v, c]) => c >= 3 && Number(v) < 15)
+          .map(([v]) => Number(v))
+      );
+      if (hasConsecutiveRun(triSet, triLen, lastValue - triLen + 2) >= 0) return true;
+      break;
+    }
+
+    case 'plane_with_singles': {
+      const planeN = lastCards.length / 4;
+      const triSet = new Set(
+        Object.entries(counts)
+          .filter(([v, c]) => c >= 3 && Number(v) < 15)
+          .map(([v]) => Number(v))
+      );
+      // lastValue 是飞机最小三张值，新飞机最小值须 > lastValue
+      for (let s = lastValue + 1; s <= 15 - planeN; s++) {
+        let ok = true;
+        for (let i = 0; i < planeN; i++) {
+          if (!triSet.has(s + i)) { ok = false; break; }
+        }
+        if (ok) {
+          let wings = 0;
+          for (const [v, c] of Object.entries(counts)) {
+            const nv = Number(v);
+            wings += (nv >= s && nv < s + planeN) ? c - 3 : c;
+          }
+          if (wings >= planeN) return true;
+        }
+      }
+      break;
+    }
+
+    case 'plane_with_pairs': {
+      const planeN = lastCards.length / 5;
+      const triSet = new Set(
+        Object.entries(counts)
+          .filter(([v, c]) => c >= 3 && Number(v) < 15)
+          .map(([v]) => Number(v))
+      );
+      for (let s = lastValue + 1; s <= 15 - planeN; s++) {
+        let ok = true;
+        for (let i = 0; i < planeN; i++) {
+          if (!triSet.has(s + i)) { ok = false; break; }
+        }
+        if (ok) {
+          let pairWings = 0;
+          for (const [v, c] of Object.entries(counts)) {
+            const nv = Number(v);
+            const avail = (nv >= s && nv < s + planeN) ? c - 3 : c;
+            pairWings += Math.floor(avail / 2);
+          }
+          if (pairWings >= planeN) return true;
+        }
+      }
+      break;
     }
   }
-  
+
   return false;
+}
+
+// 出牌提示：返回一手“最小压制”可出的牌（客户端仅用于自动选中，不自动出牌）
+function getHintCards(playerCards, lastCards, isFreeTurn) {
+  const cards = Array.isArray(playerCards) ? playerCards : [];
+  if (cards.length === 0) return [];
+
+  const sortCardAsc = (a, b) => {
+    if (a.value !== b.value) return a.value - b.value;
+    const ar = String(a.rank);
+    const br = String(b.rank);
+    if (ar !== br) return ar.localeCompare(br);
+    return String(a.suit).localeCompare(String(b.suit));
+  };
+
+  const byValue = new Map();
+  for (const c of cards) {
+    if (!byValue.has(c.value)) byValue.set(c.value, []);
+    byValue.get(c.value).push(c);
+  }
+  for (const arr of byValue.values()) arr.sort(sortCardAsc);
+
+  const pickNOfValue = (v, n) => {
+    const arr = byValue.get(v) || [];
+    if (arr.length < n) return null;
+    return arr.slice(0, n);
+  };
+
+  const allSorted = [...cards].sort(sortCardAsc);
+
+  // 轮回到自己/出牌区为空：选手里“最小的合法出牌”（按关键点数最小，其次张数最少）
+  if (isFreeTurn || !lastCards || lastCards.length === 0) {
+    /** @type {any[][]} */
+    const freeCandidates = [];
+    // 最小单牌（一定存在）
+    if (allSorted.length) freeCandidates.push([allSorted[0]]);
+
+    // 最小对子/三张/炸弹（若存在）
+    const valsAsc = [...byValue.keys()].sort((a, b) => a - b);
+    for (const v of valsAsc) {
+      const arr = byValue.get(v) || [];
+      if (arr.length >= 2) { freeCandidates.push(arr.slice(0, 2)); break; }
+    }
+    for (const v of valsAsc) {
+      const arr = byValue.get(v) || [];
+      if (arr.length >= 3) { freeCandidates.push(arr.slice(0, 3)); break; }
+    }
+    for (const v of valsAsc) {
+      const arr = byValue.get(v) || [];
+      if (arr.length >= 4) { freeCandidates.push(arr.slice(0, 4)); break; }
+    }
+
+    // 最小顺子（长度 5）/最小连对（长度 3 对）/最小三顺（长度 2 组）
+    const uniqueVals = valsAsc.filter(v => v < 15);
+    const findSeqStart = (needLen) => {
+      const set = new Set(uniqueVals);
+      for (let s = 3; s <= 15 - needLen; s++) {
+        let ok = true;
+        for (let i = 0; i < needLen; i++) {
+          if (!set.has(s + i)) { ok = false; break; }
+        }
+        if (ok) return s;
+      }
+      return -1;
+    };
+
+    const straightStart = findSeqStart(5);
+    if (straightStart >= 0) {
+      const res = [];
+      for (let i = 0; i < 5; i++) res.push(pickNOfValue(straightStart + i, 1)[0]);
+      freeCandidates.push(res);
+    }
+
+    const pairVals = valsAsc.filter(v => v < 15 && (byValue.get(v)?.length ?? 0) >= 2);
+    const pairSet = new Set(pairVals);
+    for (let s = 3; s <= 15 - 3; s++) {
+      if (pairSet.has(s) && pairSet.has(s + 1) && pairSet.has(s + 2)) {
+        const res = [];
+        for (let i = 0; i < 3; i++) res.push(...pickNOfValue(s + i, 2));
+        freeCandidates.push(res);
+        break;
+      }
+    }
+
+    const triVals = valsAsc.filter(v => v < 15 && (byValue.get(v)?.length ?? 0) >= 3);
+    const triSet = new Set(triVals);
+    for (let s = 3; s <= 15 - 2; s++) {
+      if (triSet.has(s) && triSet.has(s + 1)) {
+        const res = [];
+        for (let i = 0; i < 2; i++) res.push(...pickNOfValue(s + i, 3));
+        freeCandidates.push(res);
+        break;
+      }
+    }
+
+    // 选最小的合法牌型
+    const valid = freeCandidates
+      .map(cs => [...cs].sort(sortCardAsc))
+      .filter(cs => cs.length > 0 && getCardType(cs) !== 'invalid');
+    if (!valid.length) return [];
+    valid.sort((a, b) => {
+      const av = getCardsValue(a);
+      const bv = getCardsValue(b);
+      if (av !== bv) return av - bv;
+      if (a.length !== b.length) return a.length - b.length;
+      // 稳定排序：按牌面字典序
+      for (let i = 0; i < Math.min(a.length, b.length); i++) {
+        const ak = `${a[i].value}|${a[i].rank}|${a[i].suit}`;
+        const bk = `${b[i].value}|${b[i].rank}|${b[i].suit}`;
+        if (ak !== bk) return ak.localeCompare(bk);
+      }
+      return 0;
+    });
+    return valid[0];
+  }
+
+  const lastType = getCardType(lastCards);
+  if (lastType === 'invalid') {
+    return allSorted.length ? [allSorted[0]] : [];
+  }
+  const lastValue = getCardsValue(lastCards);
+
+  const hasRocket = cards.some(c => c.rank === '大王') && cards.some(c => c.rank === '小王');
+  const rocketCards = () => {
+    const small = cards.find(c => c.rank === '小王');
+    const big = cards.find(c => c.rank === '大王');
+    if (small && big) return [small, big].sort(sortCardAsc);
+    return null;
+  };
+
+  const findMinBomb = (minValueExclusive) => {
+    const vals = [...byValue.keys()].sort((a, b) => a - b);
+    for (const v of vals) {
+      if (v <= minValueExclusive) continue;
+      const picked = pickNOfValue(v, 4);
+      if (picked) return picked;
+    }
+    return null;
+  };
+
+  const pickSmallestOthers = (excludeValuesSet, needCount) => {
+    const res = [];
+    for (const c of allSorted) {
+      if (excludeValuesSet.has(c.value)) continue;
+      res.push(c);
+      if (res.length >= needCount) return res;
+    }
+    return null;
+  };
+
+  const pickSmallestPairs = (excludeValuesSet, needPairs) => {
+    const res = [];
+    const vals = [...byValue.keys()].sort((a, b) => a - b);
+    for (const v of vals) {
+      if (excludeValuesSet.has(v)) continue;
+      const arr = byValue.get(v) || [];
+      if (arr.length >= 2) {
+        res.push(arr[0], arr[1]);
+        if (res.length >= needPairs * 2) return res;
+      }
+    }
+    return null;
+  };
+
+  const hasConsecutiveRun = (valList, len, startMin) => {
+    const set = new Set(valList);
+    for (let s = startMin; s <= 15 - len; s++) {
+      let ok = true;
+      for (let i = 0; i < len; i++) {
+        if (!set.has(s + i)) { ok = false; break; }
+      }
+      if (ok) return s;
+    }
+    return -1;
+  };
+
+  let candidate = null;
+
+  // --- 同类型最小可压（min_power） ---
+  if (lastType === 'single') {
+    for (const c of allSorted) {
+      if (c.value > lastValue) { candidate = [c]; break; }
+    }
+  } else if (lastType === 'pair') {
+    const vals = [...byValue.keys()].sort((a, b) => a - b);
+    for (const v of vals) {
+      if (v > lastValue) {
+        const picked = pickNOfValue(v, 2);
+        if (picked) { candidate = picked; break; }
+      }
+    }
+  } else if (lastType === 'triple') {
+    const vals = [...byValue.keys()].sort((a, b) => a - b);
+    for (const v of vals) {
+      if (v > lastValue) {
+        const picked = pickNOfValue(v, 3);
+        if (picked) { candidate = picked; break; }
+      }
+    }
+  } else if (lastType === 'triple_with_single') {
+    const vals = [...byValue.keys()].sort((a, b) => a - b);
+    for (const v of vals) {
+      if (v > lastValue) {
+        const triple = pickNOfValue(v, 3);
+        if (!triple) continue;
+        const other = pickSmallestOthers(new Set([v]), 1);
+        if (other) { candidate = [...triple, ...other]; break; }
+      }
+    }
+  } else if (lastType === 'triple_with_pair') {
+    const vals = [...byValue.keys()].sort((a, b) => a - b);
+    for (const v of vals) {
+      if (v > lastValue) {
+        const triple = pickNOfValue(v, 3);
+        if (!triple) continue;
+        const pair = pickSmallestPairs(new Set([v]), 1);
+        if (pair) { candidate = [...triple, ...pair]; break; }
+      }
+    }
+  } else if (lastType === 'four_with_two') {
+    const vals = [...byValue.keys()].sort((a, b) => a - b);
+    for (const v of vals) {
+      if (v > lastValue) {
+        const four = pickNOfValue(v, 4);
+        if (!four) continue;
+        const other2 = pickSmallestOthers(new Set([v]), 2);
+        if (other2) { candidate = [...four, ...other2]; break; }
+      }
+    }
+  } else if (lastType === 'straight') {
+    const len = lastCards.length;
+    const uniqueVals = [...byValue.keys()].filter(v => v < 15).sort((a, b) => a - b);
+    const start = hasConsecutiveRun(uniqueVals, len, lastValue - len + 2);
+    if (start >= 0) {
+      const res = [];
+      for (let i = 0; i < len; i++) res.push(pickNOfValue(start + i, 1)[0]);
+      candidate = res;
+    }
+  } else if (lastType === 'double_straight') {
+    const pairLen = lastCards.length / 2;
+    const pairVals = [...byValue.entries()]
+      .filter(([v, arr]) => v < 15 && arr.length >= 2)
+      .map(([v]) => v)
+      .sort((a, b) => a - b);
+    const start = hasConsecutiveRun(pairVals, pairLen, lastValue - pairLen + 2);
+    if (start >= 0) {
+      const res = [];
+      for (let i = 0; i < pairLen; i++) res.push(...pickNOfValue(start + i, 2));
+      candidate = res;
+    }
+  } else if (lastType === 'triple_straight') {
+    const triLen = lastCards.length / 3;
+    const triVals = [...byValue.entries()]
+      .filter(([v, arr]) => v < 15 && arr.length >= 3)
+      .map(([v]) => v)
+      .sort((a, b) => a - b);
+    const start = hasConsecutiveRun(triVals, triLen, lastValue - triLen + 2);
+    if (start >= 0) {
+      const res = [];
+      for (let i = 0; i < triLen; i++) res.push(...pickNOfValue(start + i, 3));
+      candidate = res;
+    }
+  } else if (lastType === 'plane_with_singles') {
+    const n = lastCards.length / 4;
+    const triVals = [...byValue.entries()]
+      .filter(([v, arr]) => v < 15 && arr.length >= 3)
+      .map(([v]) => v)
+      .sort((a, b) => a - b);
+    for (let s = lastValue + 1; s <= 15 - n; s++) {
+      let ok = true;
+      for (let i = 0; i < n; i++) {
+        if (!byValue.has(s + i) || byValue.get(s + i).length < 3) { ok = false; break; }
+      }
+      if (!ok) continue;
+      const triples = [];
+      for (let i = 0; i < n; i++) triples.push(...pickNOfValue(s + i, 3));
+      const exclude = new Set(Array.from({ length: n }, (_, i) => s + i));
+      const wings = pickSmallestOthers(exclude, n);
+      if (wings) { candidate = [...triples, ...wings]; break; }
+    }
+  } else if (lastType === 'plane_with_pairs') {
+    const n = lastCards.length / 5;
+    for (let s = lastValue + 1; s <= 15 - n; s++) {
+      let ok = true;
+      for (let i = 0; i < n; i++) {
+        if (!byValue.has(s + i) || byValue.get(s + i).length < 3) { ok = false; break; }
+      }
+      if (!ok) continue;
+      const triples = [];
+      for (let i = 0; i < n; i++) triples.push(...pickNOfValue(s + i, 3));
+      const exclude = new Set(Array.from({ length: n }, (_, i) => s + i));
+      const wingsPairs = pickSmallestPairs(exclude, n);
+      if (wingsPairs) { candidate = [...triples, ...wingsPairs]; break; }
+    }
+  } else if (lastType === 'bomb') {
+    candidate = findMinBomb(lastValue);
+  }
+
+  // 校验候选必须能压过（避免构造错误）
+  if (candidate && candidate.length && canPlay(candidate, lastCards)) {
+    return [...candidate].sort(sortCardAsc);
+  }
+
+  // --- 兜底：炸弹/火箭 ---
+  if (lastType !== 'bomb') {
+    const bomb = findMinBomb(0);
+    if (bomb && canPlay(bomb, lastCards)) return [...bomb].sort(sortCardAsc);
+  }
+
+  if (hasRocket) {
+    const r = rocketCards();
+    if (r && canPlay(r, lastCards)) return r;
+  }
+
+  return [];
 }
 
 // 游戏状态管理
@@ -574,6 +961,7 @@ module.exports = {
   getCardType,
   canPlay,
   canPlayerBeatCards,
+  getHintCards,
   getCardsValue,
   Game
 };

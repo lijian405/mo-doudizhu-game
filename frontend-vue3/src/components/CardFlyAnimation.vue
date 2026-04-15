@@ -2,7 +2,7 @@
   <div
     v-if="show"
     class="card-fly-animation"
-    :style="animationStyle"
+    :style="animationStyle as any"
     @animationend="handleAnimationEnd"
   >
     <CardComponent
