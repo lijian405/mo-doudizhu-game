@@ -97,6 +97,8 @@ export interface CardsPlayedData {
   /** 服务端下发的全量玩家手牌快照 */
   players?: Player[]
   gameStatus?: string
+  /** 当前玩家是否能大过上家出的牌 */
+  canBeatLastCards?: boolean
 }
 
 // 游戏结束

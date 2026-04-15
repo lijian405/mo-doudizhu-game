@@ -1,6 +1,6 @@
 const { randomUUID } = require('crypto');
 const { WebSocketServer, WebSocket } = require('ws');
-const { Game } = require('../game/gameLogic');
+const { Game, canPlayerBeatCards } = require('../game/gameLogic');
 const { updateRoomStatus, deleteRoom, getRoomByRoomId, getParameter } = require('../db/db');
 const { WsHub } = require('./wsHub');
 const { setAdminContext } = require('./adminContext');
@@ -509,14 +509,22 @@ function attachWebSocketHandlers(server, state) {
             if (success) {
               stopCountdown(roomId);
 
-              hub.broadcastRoomEach(roomId, 'cardsPlayed', (cid) => ({
-                playerId: connectionId,
-                cards,
-                players: buildPlayersForConnection(game.players, cid),
-                currentPlayerIndex: game.currentPlayerIndex,
-                gameStatus: game.status,
-                multiplier: game.倍数
-              }));
+              hub.broadcastRoomEach(roomId, 'cardsPlayed', (cid) => {
+                // 计算下家是否能大过当前出牌
+                const nextPlayerIndex = game.currentPlayerIndex;
+                const nextPlayer = game.players[nextPlayerIndex];
+                const canBeatLastCards = canPlayerBeatCards(nextPlayer.cards, cards);
+                
+                return {
+                  playerId: connectionId,
+                  cards,
+                  players: buildPlayersForConnection(game.players, cid),
+                  currentPlayerIndex: game.currentPlayerIndex,
+                  gameStatus: game.status,
+                  multiplier: game.倍数,
+                  canBeatLastCards: cid === nextPlayer.id ? canBeatLastCards : undefined
+                };
+              });
 
               if (game.status === 'ended') {
                 stopRoomTimer(roomId);

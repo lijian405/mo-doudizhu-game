@@ -311,6 +311,117 @@ function canPlay(cards, lastCards) {
   return getCardsValue(cards) > getCardsValue(lastCards);
 }
 
+// 判断玩家是否有能大过指定牌的牌
+function canPlayerBeatCards(playerCards, lastCards) {
+  if (!lastCards || lastCards.length === 0) return true;
+  
+  const lastType = getCardType(lastCards);
+  if (lastType === 'invalid') return true;
+  
+  // 检查是否有火箭
+  const hasKingBomb = playerCards.some(card => card.rank === '大王') && 
+                     playerCards.some(card => card.rank === '小王');
+  if (hasKingBomb) return true;
+  
+  // 检查是否有比当前炸弹大的炸弹
+  if (lastType === 'bomb') {
+    const lastValue = getCardsValue(lastCards);
+    // 检查是否有更大的炸弹
+    const counts = countCardValues(playerCards);
+    for (const [value, count] of Object.entries(counts)) {
+      if (count >= 4 && Number(value) > lastValue) {
+        return true;
+      }
+    }
+  } else {
+    // 检查是否有炸弹
+    const counts = countCardValues(playerCards);
+    for (const count of Object.values(counts)) {
+      if (count >= 4) {
+        return true;
+      }
+    }
+  }
+  
+  // 检查相同类型的牌
+  // 这里简化处理，只检查单牌、对子、三张和炸弹
+  // 对于其他复杂牌型（如顺子、飞机等），可能需要更复杂的逻辑
+  
+  // 检查单牌
+  if (lastType === 'single') {
+    const lastValue = getCardsValue(lastCards);
+    for (const card of playerCards) {
+      if (card.value > lastValue) {
+        return true;
+      }
+    }
+  }
+  
+  // 检查对子
+  if (lastType === 'pair') {
+    const lastValue = getCardsValue(lastCards);
+    const counts = countCardValues(playerCards);
+    for (const [value, count] of Object.entries(counts)) {
+      if (count >= 2 && Number(value) > lastValue) {
+        return true;
+      }
+    }
+  }
+  
+  // 检查三张
+  if (lastType === 'triple') {
+    const lastValue = getCardsValue(lastCards);
+    const counts = countCardValues(playerCards);
+    for (const [value, count] of Object.entries(counts)) {
+      if (count >= 3 && Number(value) > lastValue) {
+        return true;
+      }
+    }
+  }
+  
+  // 检查三带一
+  if (lastType === 'triple_with_single') {
+    const lastValue = getCardsValue(lastCards);
+    const counts = countCardValues(playerCards);
+    for (const [value, count] of Object.entries(counts)) {
+      if (count >= 3 && Number(value) > lastValue) {
+        // 检查是否有单牌可以带
+        let singleCount = 0;
+        for (const [v, c] of Object.entries(counts)) {
+          if (v !== value) {
+            singleCount += c;
+          }
+        }
+        if (singleCount >= 1) {
+          return true;
+        }
+      }
+    }
+  }
+  
+  // 检查三带二
+  if (lastType === 'triple_with_pair') {
+    const lastValue = getCardsValue(lastCards);
+    const counts = countCardValues(playerCards);
+    for (const [value, count] of Object.entries(counts)) {
+      if (count >= 3 && Number(value) > lastValue) {
+        // 检查是否有对子可以带
+        let pairCount = 0;
+        for (const [v, c] of Object.entries(counts)) {
+          if (v !== value && c >= 2) {
+            pairCount++;
+          }
+        }
+        if (pairCount >= 1) {
+          return true;
+        }
+      }
+    }
+  }
+  
+  return false;
+}
+
 // 游戏状态管理
 class Game {
   constructor(roomId, players) {
@@ -462,6 +573,7 @@ module.exports = {
   dealCards,
   getCardType,
   canPlay,
+  canPlayerBeatCards,
   getCardsValue,
   Game
 };

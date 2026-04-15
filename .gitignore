@@ -18,7 +18,7 @@ Thumbs.db
 # Build files
 build/
 dist/
-
+.trae/
 # Log files
 logs
 *.log

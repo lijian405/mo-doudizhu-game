@@ -128,22 +128,34 @@
       <div class="bottom-area">
         <!-- 操作按钮（顺序与常见斗地主 UI：左不出、右出牌） -->
         <div class="action-buttons">
+          <!-- 要不起按钮 -->
           <button
+            v-if="!canBeatLastCards && gameStore.isMyTurn"
             type="button"
             class="btn btn--pass btn--game-action"
-            :disabled="!gameStore.isMyTurn || !gameStore.canPass"
             @click="handlePass"
           >
-            不出
+            要不起
           </button>
-          <button
-            type="button"
-            class="btn btn--play btn--game-action"
-            :disabled="!gameStore.isMyTurn || gameStore.selectedCards.length === 0"
-            @click="handlePlayCards"
-          >
-            出牌
-          </button>
+          <!-- 不出和出牌按钮 -->
+          <template v-else>
+            <button
+              type="button"
+              class="btn btn--pass btn--game-action"
+              :disabled="!gameStore.isMyTurn || !gameStore.canPass"
+              @click="handlePass"
+            >
+              不出
+            </button>
+            <button
+              type="button"
+              class="btn btn--play btn--game-action"
+              :disabled="!gameStore.isMyTurn || gameStore.selectedCards.length === 0"
+              @click="handlePlayCards"
+            >
+              出牌
+            </button>
+          </template>
         </div>
 
         <PlayerArea
@@ -219,6 +231,9 @@ const animationCards = ref<Card[]>([])
 const animationStartPosition = ref({ x: 0, y: 0 })
 const animationEndPosition = ref({ x: 0, y: 0 })
 const animationDirection = ref<'left' | 'right' | 'bottom'>('bottom')
+
+// 是否能大过上家出的牌
+const canBeatLastCards = ref(true)
 
 // 计算属性
 const leftPlayer = computed(() => roomStore.getPlayerByPosition(0))
@@ -395,7 +410,6 @@ const handlePass = () => {
     roomId: roomStore.roomId
   })
 }
-
 // 叫分相关方法
 const canCallScore = (score: number): boolean => {
   return score > callingInfo.value.highestScore
@@ -535,6 +549,11 @@ const handleBackToRoom = () => {
 // 监听出牌
 const handleCardsPlayed = async (data: CardsPlayedData) => {
   console.log('出牌:', data)
+
+  // 更新是否能大过上家出的牌的状态
+  if (data.canBeatLastCards !== undefined) {
+    canBeatLastCards.value = data.canBeatLastCards
+  }
 
   if (data.cards && data.cards.length > 0) {
     // 确定出牌方向
