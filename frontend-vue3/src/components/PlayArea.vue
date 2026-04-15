@@ -37,10 +37,9 @@ withDefaults(defineProps<Props>(), {
 
 <style scoped lang="scss">
 .play-area {
-  background-color: rgba(255, 255, 255, 0.1);
+
   border-radius: 16px;
   padding: 20px;
-  backdrop-filter: blur(10px);
   text-align: center;
 
   &__title {

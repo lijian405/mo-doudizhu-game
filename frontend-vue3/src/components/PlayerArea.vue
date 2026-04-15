@@ -1,72 +1,84 @@
 <template>
   <div class="player-area" :class="`player-area--${position}`">
-    <div class="player-area__content">
-      <!-- 倒计时 -->
-      <Countdown
-        v-if="isCurrentTurn && countdown > 0"
-        :countdown="countdown"
-        class="player-area__countdown"
-      />
-
-      <!-- 玩家信息 -->
-      <div class="player-area__info">
-        <!-- 头像区域（包含地主帽子） -->
-        <div class="player-area__avatar-container">
-          <!-- 地主帽子 -->
-          <div v-if="isLandlord" class="player-area__landlord-hat">
-            <img :src="landlordHat" alt="地主" />
+    <!-- 底部玩家特殊布局 -->
+    <template v-if="position === 'bottom' && isSelf">
+      <div class="player-area__bottom-layout">
+        <!-- 卡牌区域 -->
+        <div class="player-area__cards">
+          <Transition name="turn-hint">
+            <div
+              v-if="showTurnHint && isSelf && isCurrentTurn"
+              class="player-area__turn-hint"
+            >
+              轮到你出牌了
+            </div>
+          </Transition>
+          <!-- 自己的牌（支持鼠标拖动多选） -->
+          <div class="player-area__cards-container">
+            <div
+              v-for="(card, index) in cards"
+              :key="`${card.suit}-${card.rank}`"
+              class="card-drag-wrapper"
+              :data-card-index="index"
+              @mousedown.prevent="onCardMouseDown(card)"
+              @mouseenter="onCardMouseEnter(card)"
+              @touchstart.prevent="onCardTouchStart(card)"
+              @touchmove.prevent="onCardTouchMove(card)"
+              @touchend="onTouchEnd"
+            >
+              <CardComponent
+                :card="card"
+                :is-selected="isCardSelected(card)"
+              />
+            </div>
           </div>
-          <!-- 头像 -->
-          <div class="player-area__avatar">
-            <img
-              :src="avatarUrl || defaultAvatar"
-              :alt="playerName"
-            />
-          </div>
-        </div>
-
-        <!-- 玩家名称和分值 -->
-        <div class="player-area__details">
-          <div class="player-area__name">
-            {{ playerName }}
-          </div>
-          <div class="player-area__score">分值: {{ score }}</div>
         </div>
       </div>
-    </div>
+    </template>
 
-    <!-- 卡牌区域 -->
-    <div class="player-area__cards">
-      <Transition name="turn-hint">
-        <div
-          v-if="showTurnHint && isSelf && isCurrentTurn"
-          class="player-area__turn-hint"
-        >
-          轮到你出牌了
-        </div>
-      </Transition>
-      <!-- 自己的牌（支持鼠标拖动多选） -->
-      <template v-if="isSelf">
-        <div
-          v-for="(card, index) in cards"
-          :key="`${card.suit}-${card.rank}`"
-          class="card-drag-wrapper"
-          :data-card-index="index"
-          @mousedown.prevent="onCardMouseDown(card)"
-          @mouseenter="onCardMouseEnter(card)"
-        >
-          <CardComponent
-            :card="card"
-            :is-selected="isCardSelected(card)"
-          />
-        </div>
-      </template>
+    <!-- 其他玩家布局 -->
+    <template v-else>
+      <div class="player-area__content">
+        <!-- 倒计时 -->
+        <Countdown
+          v-if="isCurrentTurn && countdown > 0"
+          :countdown="countdown"
+          class="player-area__countdown"
+        />
 
-      <!-- 其他玩家的牌（背面） -->
-      <template v-else>
+        <!-- 玩家信息 -->
+        <div class="player-area__info">
+          <!-- 头像区域（包含地主帽子） -->
+          <div class="player-area__avatar-container">
+            <!-- 地主帽子 -->
+            <div v-if="isLandlord" class="player-area__landlord-hat">
+              <img :src="landlordHat" alt="地主" />
+            </div>
+            <!-- 头像 -->
+            <div class="player-area__avatar">
+              <img
+                :src="avatarUrl || defaultAvatar"
+                :alt="playerName"
+              />
+            </div>
+          </div>
+
+          <!-- 玩家名称和分值 -->
+          <div class="player-area__details">
+            <div class="player-area__name">
+              {{ playerName }}
+            </div>
+            <div class="player-area__score">分值: {{ score }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 卡牌区域 -->
+      <div class="player-area__cards">
+        <!-- 其他玩家的牌（背面） -->
         <CardBack size="large" :count="cardCount" />
-      </template>
-    </div>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -124,6 +136,10 @@ let dragMode: 'select' | 'deselect' = 'select'
 const processedCards = new Set<string>()
 let startCard: Card | null = null
 
+// 触摸事件相关
+let isTouching = false
+let touchStartY = 0
+
 function cardKey(card: Card): string {
   return `${card.suit}-${card.rank}`
 }
@@ -170,6 +186,36 @@ const onMouseUp = () => {
   startCard = null
 }
 
+// 触摸事件处理
+const onCardTouchStart = (card: Card) => {
+  if (!props.isSelf) return
+  isTouching = true
+  isDragging = false
+  dragMode = isCardSelected(card) ? 'deselect' : 'select'
+  processedCards.clear()
+  startCard = card
+}
+
+const onCardTouchMove = (card: Card) => {
+  if (!isTouching || !props.isSelf) return
+  if (!isDragging) {
+    isDragging = true
+    if (startCard) processCard(startCard)
+  }
+  processCard(card)
+}
+
+const onTouchEnd = () => {
+  if (!isTouching) return
+  if (!isDragging && startCard) {
+    emit('card-click', startCard)
+  }
+  isTouching = false
+  isDragging = false
+  processedCards.clear()
+  startCard = null
+}
+
 onMounted(() => {
   document.addEventListener('mouseup', onMouseUp)
 })
@@ -195,12 +241,46 @@ onUnmounted(() => {
 
   &--bottom {
     grid-area: bottom;
+    width: 100%;
   }
 
   &__content {
     display: flex;
     align-items: center;
     gap: 10px;
+  }
+
+  &__bottom-layout {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+  }
+
+  &__cards {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    user-select: none;
+    display: flex;
+    justify-content: center;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  &__cards-container {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    padding: 10px 0;
+    flex: 0 0 auto;
   }
 
   &__countdown {
@@ -276,16 +356,6 @@ onUnmounted(() => {
     font-weight: bold;
   }
 
-  &__cards {
-    position: relative;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 5px;
-    max-width: 100%;
-    user-select: none;
-  }
-
   &__turn-hint {
     position: absolute;
     top: -34px;
@@ -311,6 +381,16 @@ onUnmounted(() => {
 
 .card-drag-wrapper {
   display: inline-flex;
+  margin-right: -22px;
+  transition: transform 0.2s ease;
+
+  &:last-child {
+    margin-right: 0;
+  }
+
+  &:hover {
+    transform: translateY(-5px);
+  }
 }
 
 /* 显示/隐藏动画 */

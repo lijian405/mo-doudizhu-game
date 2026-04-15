@@ -126,44 +126,82 @@
 
       <!-- 底部玩家（自己） -->
       <div class="bottom-area">
-        <!-- 操作按钮（顺序与常见斗地主 UI：左不出、右出牌） -->
-        <div class="action-buttons">
-          <!-- 要不起按钮 -->
-          <button
-            v-if="!canBeatLastCards && gameStore.isMyTurn"
-            type="button"
-            class="btn btn--pass btn--game-action"
-            @click="handlePass"
-          >
-            要不起
-          </button>
-          <!-- 不出和出牌按钮 -->
-          <template v-else>
+        <!-- 底部区域布局 -->
+        <div class="bottom-area__layout">
+          <!-- 左侧玩家信息（固定位置） -->
+          <div class="bottom-area__player-info">
+            <div class="player-area__info">
+              <!-- 头像区域（包含地主帽子） -->
+              <div class="player-area__avatar-container">
+                <!-- 地主帽子 -->
+                <div v-if="gameStore.isLandlord" class="player-area__landlord-hat">
+                  <img :src="landlordHat" alt="地主" />
+                </div>
+                <!-- 头像 -->
+                <div class="player-area__avatar">
+                  <img
+                    :src="playerStore.currentPlayer?.avatar || defaultAvatar"
+                    :alt="playerStore.playerName"
+                  />
+                </div>
+              </div>
+
+              <!-- 玩家名称和分值 -->
+              <div class="player-area__details">
+                <div class="player-area__name">
+                  {{ playerStore.playerName }}
+                </div>
+                <div class="player-area__score">分值: {{ playerStore.currentScore }}</div>
+              </div>
+
+              <!-- 倒计时 -->
+              <Countdown
+                v-if="gameStore.isMyTurn && gameStore.countdown > 0"
+                :countdown="gameStore.countdown"
+                class="player-area__countdown"
+              />
+            </div>
+          </div>
+
+          <!-- 右侧操作按钮（顺序与常见斗地主 UI：左不出、右出牌） -->
+          <div class="action-buttons">
+            <!-- 要不起按钮 -->
             <button
+              v-if="!canBeatLastCards && gameStore.isMyTurn"
               type="button"
               class="btn btn--pass btn--game-action"
-              :disabled="!gameStore.isMyTurn || !gameStore.canPass"
               @click="handlePass"
             >
-              不出
+              要不起
             </button>
-            <button
-              type="button"
-              class="btn btn--hint btn--game-action"
-              :disabled="!gameStore.isMyTurn || isHintLoading"
-              @click="handleHint"
-            >
-              提示
-            </button>
-            <button
-              type="button"
-              class="btn btn--play btn--game-action"
-              :disabled="!gameStore.isMyTurn || gameStore.selectedCards.length === 0"
-              @click="handlePlayCards"
-            >
-              出牌
-            </button>
-          </template>
+            <!-- 不出和出牌按钮 -->
+            <template v-else>
+              <button
+                type="button"
+                class="btn btn--pass btn--game-action"
+                :disabled="!gameStore.isMyTurn || !gameStore.canPass"
+                @click="handlePass"
+              >
+                不出
+              </button>
+              <button
+                type="button"
+                class="btn btn--hint btn--game-action"
+                :disabled="!gameStore.isMyTurn || isHintLoading"
+                @click="handleHint"
+              >
+                提示
+              </button>
+              <button
+                type="button"
+                class="btn btn--play btn--game-action"
+                :disabled="!gameStore.isMyTurn || gameStore.selectedCards.length === 0"
+                @click="handlePlayCards"
+              >
+                出牌
+              </button>
+            </template>
+          </div>
         </div>
 
         <PlayerArea
@@ -199,6 +237,9 @@ import PlayArea from '@/components/PlayArea.vue'
 import GameTopBar from '@/components/GameTopBar.vue'
 import GameMessage from '@/components/GameMessage.vue'
 import CardFlyAnimation from '@/components/CardFlyAnimation.vue'
+import Countdown from '@/components/Countdown.vue'
+import defaultAvatar from '@/assets/images/default_avatar.jpg'
+import landlordHat from '@/assets/images/dz_hat.png'
 import type {
   Card,
   CardsPlayedData,
@@ -710,9 +751,14 @@ onUnmounted(() => {
 
 <style scoped lang="scss">
 .game-view {
-  background: linear-gradient(135deg, #2c7d34 0%, #1b5e20 100%);
   min-height: 100vh;
-  padding: 20px;
+  background-color: #1b5e20;
+  background-image:
+    linear-gradient(135deg, rgba(44, 125, 52, 0.4) 0%, rgba(27, 94, 32, 0.5) 100%),
+    url('@/assets/images/game_table_bg.jpg');
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center center;
 }
 
 .game-container {
@@ -721,8 +767,7 @@ onUnmounted(() => {
     "info info info"
     "left play right"
     "bottom bottom bottom";
-  grid-template-columns: 1fr 2.2fr 1fr;
-  gap: 20px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 1fr);
   max-width: 1200px;
   margin: 0 auto;
 }
@@ -737,6 +782,7 @@ onUnmounted(() => {
 
 .play-area {
   grid-area: play;
+  min-width: 0;
 }
 
 .game-top-bar {
@@ -748,7 +794,107 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: 100%;
+}
+
+.bottom-area__layout {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  width: 100%;
   gap: 20px;
+}
+
+.bottom-area__player-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.player-area__info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: white;
+}
+
+.player-area__avatar-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.player-area__landlord-hat {
+  position: absolute;
+  top: -30px;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+}
+
+.player-area__avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid #ffcc00;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.player-area__details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.player-area__name {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.player-area__score {
+  font-size: 14px;
+  color: #ffcc00;
+  font-weight: bold;
+}
+
+.player-area__countdown {
+  font-size: 24px;
+  font-weight: bold;
+  color: #ff6b6b;
+  background-color: rgba(255, 107, 107, 0.1);
+  padding: 8px 16px;
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.7;
+  }
 }
 
 .action-buttons {
@@ -757,6 +903,7 @@ onUnmounted(() => {
   margin-top: 10px;
   justify-content: center;
   align-items: center;
+  flex: 1;
 }
 
 // 主界面：光泽立体「不出 / 出牌」（参考休闲手游按钮）
@@ -1095,18 +1242,235 @@ onUnmounted(() => {
   }
 }
 
+/* 移动端：保持左-中-右三列，缩小中间出牌区比例，避免误用 (orientation: landscape) 隐藏两侧玩家 */
 @media (max-width: 768px) {
-  .game-container {
-    grid-template-areas:
-      "info"
-      "play"
-      "bottom";
-    grid-template-columns: 1fr;
+  .game-view {
+    padding: 10px;
+    min-height: 100vh;
+    background-position: center 55%;
   }
 
-  .player-area--left,
-  .player-area--right {
-    display: none;
+  .game-container {
+    grid-template-areas:
+      "info info info"
+      "left play right"
+      "bottom bottom bottom";
+    grid-template-columns: minmax(0, 0.82fr) minmax(0, 1fr) minmax(0, 0.82fr);
+    gap: 8px;
+    align-items: start;
+  }
+
+  :deep(.player-area--left),
+  :deep(.player-area--right) {
+    min-width: 0;
+  }
+
+  :deep(.player-area--left .player-area__content),
+  :deep(.player-area--right .player-area__content) {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  :deep(.player-area--left .player-area__info),
+  :deep(.player-area--right .player-area__info) {
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+    text-align: center;
+  }
+
+  :deep(.player-area--left .player-area__name),
+  :deep(.player-area--right .player-area__name) {
+    font-size: 12px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  :deep(.player-area--left .player-area__score),
+  :deep(.player-area--right .player-area__score) {
+    font-size: 11px;
+  }
+
+  :deep(.player-area--left .player-area__avatar),
+  :deep(.player-area--right .player-area__avatar) {
+    width: 40px;
+    height: 40px;
+  }
+
+  :deep(.player-area--left .player-area__landlord-hat),
+  :deep(.player-area--right .player-area__landlord-hat) {
+    width: 36px;
+    height: 36px;
+    top: -22px;
+  }
+
+  :deep(.player-area--left .player-area__countdown),
+  :deep(.player-area--right .player-area__countdown) {
+    font-size: 14px;
+    padding: 4px 8px;
+  }
+
+  :deep(.player-area--left .card-back),
+  :deep(.player-area--right .card-back) {
+    width: 52px !important;
+    height: 72px !important;
+  }
+
+  .bottom-area {
+    gap: 10px;
+  }
+
+  .bottom-area__layout {
+    flex-direction: row;
+    gap: 10px;
+  }
+
+  .bottom-area__player-info {
+    gap: 5px;
+  }
+
+  .player-area__info {
+    gap: 8px;
+  }
+
+  .player-area__avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .player-area__landlord-hat {
+    width: 40px;
+    height: 40px;
+    top: -25px;
+  }
+
+  .player-area__name {
+    font-size: 14px;
+  }
+
+  .player-area__score {
+    font-size: 12px;
+  }
+
+  .player-area__countdown {
+    font-size: 20px;
+    padding: 6px 12px;
+  }
+
+  .action-buttons {
+    gap: clamp(10px, 3vw, 18px);
+    margin-top: 5px;
+  }
+
+  .action-buttons .btn--game-action {
+    padding: 10px 24px;
+    min-width: 80px;
+    font-size: clamp(14px, 3vw, 18px);
+  }
+
+  .player-area__bottom-layout {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .player-area__content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+
+  .player-area__info {
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .player-area__avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .player-area__landlord-hat {
+    width: 40px;
+    height: 40px;
+    top: -25px;
+  }
+
+  .player-area__name {
+    font-size: 14px;
+  }
+
+  .player-area__score {
+    font-size: 12px;
+  }
+
+  .player-area__cards-container {
+    gap: -10px;
+    padding: 5px 0;
+  }
+
+  .card {
+    width: 45px !important;
+    height: 63px !important;
+  }
+
+  .card__rank {
+    font-size: 12px !important;
+  }
+
+  .card__suit-small {
+    font-size: 10px !important;
+  }
+
+  .card__suit-large {
+    font-size: 20px !important;
+  }
+
+  .game-top-bar {
+    padding: 8px 12px;
+  }
+
+  .play-area {
+    padding: 8px 6px;
+  }
+
+  :deep(.play-area__title) {
+    font-size: 0.95rem;
+    margin-bottom: 8px;
+  }
+
+  :deep(.play-area__cards) {
+    min-height: 56px;
+    gap: 4px;
+  }
+
+  :deep(.play-area__info) {
+    font-size: 12px;
+    margin-top: 6px;
+  }
+
+  .calling-content,
+  .game-result-content {
+    padding: 20px;
+    max-width: 90%;
+  }
+
+  .calling-content h2,
+  .game-result-content h2 {
+    font-size: 1.5rem;
+  }
+
+  .calling-buttons {
+    gap: 10px;
+  }
+
+  .btn {
+    padding: 10px 20px;
+    font-size: 14px;
+    min-width: 100px;
   }
 }
 </style>
