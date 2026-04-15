@@ -17,6 +17,7 @@ export interface RoomListItem {
   playerCount: number
   maxPlayers: number
   roomStatus: 'waiting' | 'full' | 'playing' // 房间状态：等待中、满员中、已开始
+  hasPassword?: boolean
 }
 
 // 房间信息

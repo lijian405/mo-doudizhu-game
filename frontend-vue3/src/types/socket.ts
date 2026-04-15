@@ -12,6 +12,7 @@ import type { Room, GameState, CallingInfo, GameResult, CountdownInfo, RoomListI
 export interface JoinRoomData {
   roomId: string
   playerName: string
+  password?: string
 }
 
 // 创建房间

@@ -77,7 +77,8 @@ function attachWebSocketHandlers(server, state) {
         status,
         playerCount: room.players.length,
         maxPlayers: 3,
-        roomStatus
+        roomStatus,
+        hasPassword: room.hasPassword || false
       });
     });
     return roomList;
@@ -311,7 +312,7 @@ function attachWebSocketHandlers(server, state) {
             break;
 
           case 'joinRoom': {
-            const { roomId, playerName } = data;
+            const { roomId, playerName, password } = data;
             console.log('加入房间请求:', data);
 
             try {
@@ -321,12 +322,20 @@ function attachWebSocketHandlers(server, state) {
                 return;
               }
 
+              if (dbRoom.password) {
+                if (!password || password !== dbRoom.password) {
+                  hub.sendTo(connectionId, 'joinRoomFailed', { message: '房间密码错误' });
+                  return;
+                }
+              }
+
               if (!rooms.has(roomId)) {
                 rooms.set(roomId, {
                   id: roomId,
                   players: [],
                   status: dbRoom.status,
-                  ownerId: null
+                  ownerId: null,
+                  hasPassword: !!dbRoom.password
                 });
               }
             } catch (error) {

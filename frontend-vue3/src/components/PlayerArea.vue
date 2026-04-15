@@ -32,15 +32,20 @@
           轮到你出牌了
         </div>
       </Transition>
-      <!-- 自己的牌 -->
+      <!-- 自己的牌（支持鼠标拖动多选） -->
       <template v-if="isSelf">
-        <CardComponent
+        <div
           v-for="card in cards"
           :key="`${card.suit}-${card.rank}`"
-          :card="card"
-          :is-selected="isCardSelected(card)"
-          @click="handleCardClick(card)"
-        />
+          class="card-drag-wrapper"
+          @mousedown.prevent="onCardMouseDown(card)"
+          @mouseenter="onCardMouseEnter(card)"
+        >
+          <CardComponent
+            :card="card"
+            :is-selected="isCardSelected(card)"
+          />
+        </div>
       </template>
 
       <!-- 其他玩家的牌（背面） -->
@@ -52,6 +57,7 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted, onUnmounted } from 'vue'
 import type { Card, PlayerPosition } from '@/types'
 import CardComponent from './Card.vue'
 import CardBack from './CardBack.vue'
@@ -91,11 +97,65 @@ const isCardSelected = (card: Card): boolean => {
   )
 }
 
-const handleCardClick = (card: Card) => {
-  if (props.isSelf) {
+// --- Drag multi-select ---
+let isMouseDown = false
+let isDragging = false
+let dragMode: 'select' | 'deselect' = 'select'
+const processedCards = new Set<string>()
+let startCard: Card | null = null
+
+function cardKey(card: Card): string {
+  return `${card.suit}-${card.rank}`
+}
+
+function processCard(card: Card) {
+  const key = cardKey(card)
+  if (processedCards.has(key)) return
+  processedCards.add(key)
+
+  const selected = isCardSelected(card)
+  if (dragMode === 'select' && !selected) {
+    emit('card-click', card)
+  } else if (dragMode === 'deselect' && selected) {
     emit('card-click', card)
   }
 }
+
+const onCardMouseDown = (card: Card) => {
+  if (!props.isSelf) return
+  isMouseDown = true
+  isDragging = false
+  dragMode = isCardSelected(card) ? 'deselect' : 'select'
+  processedCards.clear()
+  startCard = card
+}
+
+const onCardMouseEnter = (card: Card) => {
+  if (!isMouseDown || !props.isSelf) return
+  if (!isDragging) {
+    isDragging = true
+    if (startCard) processCard(startCard)
+  }
+  processCard(card)
+}
+
+const onMouseUp = () => {
+  if (!isMouseDown) return
+  if (!isDragging && startCard) {
+    emit('card-click', startCard)
+  }
+  isMouseDown = false
+  isDragging = false
+  processedCards.clear()
+  startCard = null
+}
+
+onMounted(() => {
+  document.addEventListener('mouseup', onMouseUp)
+})
+onUnmounted(() => {
+  document.removeEventListener('mouseup', onMouseUp)
+})
 </script>
 
 <style scoped lang="scss">
@@ -167,6 +227,7 @@ const handleCardClick = (card: Card) => {
     justify-content: center;
     gap: 5px;
     max-width: 100%;
+    user-select: none;
   }
 
   &__turn-hint {
@@ -190,6 +251,10 @@ const handleCardClick = (card: Card) => {
       0 10px 22px rgba(0, 0, 0, 0.25),
       0 0 0 3px rgba(255, 215, 0, 0.08);
   }
+}
+
+.card-drag-wrapper {
+  display: inline-flex;
 }
 
 /* 显示/隐藏动画 */

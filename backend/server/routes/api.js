@@ -17,7 +17,8 @@ router.get('/rooms', async (req, res) => {
       status: room.status,
       playerCount: room.player_count,
       maxPlayers: room.max_players,
-      roomStatus: room.status
+      roomStatus: room.status,
+      hasPassword: !!room.password
     }));
     res.json({ rooms: roomList });
   } catch (error) {
@@ -28,11 +29,11 @@ router.get('/rooms', async (req, res) => {
 
 router.post('/rooms', async (req, res) => {
   try {
-    const { roomId, ownerName } = req.body;
+    const { roomId, ownerName, password } = req.body;
     if (!roomId || !ownerName) {
       return res.status(400).json({ error: '房间ID和房主名称不能为空' });
     }
-    await createRoom(roomId, ownerName);
+    await createRoom(roomId, ownerName, password || null);
     res.json({ success: true, roomId });
   } catch (error) {
     console.error('创建房间失败:', error);

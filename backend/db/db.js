@@ -6,7 +6,7 @@ const pool = mysql.createPool({
   user: 'root',
   password: '@wZkVJ$NWnL!RQV$uHHw3N*k3',
   database: 'doudizhu',
-  port: 3336,
+  port: 3306,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
@@ -31,6 +31,7 @@ function initDatabase() {
       player_count INT DEFAULT 0,
       max_players INT DEFAULT 3,
       owner_name VARCHAR(50),
+      password VARCHAR(50) DEFAULT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -60,6 +61,14 @@ function initDatabase() {
       console.error('创建房间表失败:', err);
     } else {
       console.log('房间表创建成功');
+      pool.execute(
+        "ALTER TABLE rooms ADD COLUMN password VARCHAR(50) DEFAULT NULL",
+        (alterErr) => {
+          if (alterErr && alterErr.code !== 'ER_DUP_FIELDNAME') {
+            console.error('添加password列失败:', alterErr);
+          }
+        }
+      );
     }
   });
   
@@ -129,10 +138,10 @@ function updateUserScore(userId, score) {
 }
 
 // 创建房间
-function createRoom(roomId, ownerName) {
+function createRoom(roomId, ownerName, password = null) {
   return new Promise((resolve, reject) => {
-    const sql = 'INSERT INTO rooms (room_id, status, player_count, owner_name) VALUES (?, ?, ?, ?)';
-    pool.execute(sql, [roomId, 'waiting', 1, ownerName], (err, results) => {
+    const sql = 'INSERT INTO rooms (room_id, status, player_count, owner_name, password) VALUES (?, ?, ?, ?, ?)';
+    pool.execute(sql, [roomId, 'waiting', 1, ownerName, password || null], (err, results) => {
       if (err) {
         reject(err);
       } else {

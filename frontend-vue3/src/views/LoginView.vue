@@ -32,7 +32,10 @@
             @click="handleRoomClick(room)"
           >
             <div class="room-info">
-              <div class="room-id">房间: {{ room.id }}</div>
+              <div class="room-id">
+                <span v-if="room.hasPassword" class="lock-icon">🔒</span>
+                房间: {{ room.id }}
+              </div>
               <div class="room-players">{{ room.playerCount }}/3 人</div>
             </div>
             <div class="room-status">
@@ -67,6 +70,16 @@
               @keyup.enter="handleCreateRoomModal"
             />
           </div>
+          <div class="form-group">
+            <label for="create-room-password">房间密码（可选）</label>
+            <input
+              id="create-room-password"
+              v-model="createRoomPassword"
+              type="password"
+              placeholder="留空则不设置密码"
+              @keyup.enter="handleCreateRoomModal"
+            />
+          </div>
         </div>
         <div class="modal-buttons">
           <button class="btn btn--secondary" @click="showCreateModal = false">取消</button>
@@ -81,6 +94,10 @@
         <h3>加入房间</h3>
         <div class="modal-form">
           <div class="form-group">
+            <label>房间ID</label>
+            <div class="room-id-display">{{ selectedRoomId }}</div>
+          </div>
+          <div class="form-group">
             <label for="join-player-name">玩家名称</label>
             <input
               id="join-player-name"
@@ -90,9 +107,16 @@
               @keyup.enter="handleJoinRoomModal"
             />
           </div>
-          <div class="form-group">
-            <label>房间ID</label>
-            <div class="room-id-display">{{ selectedRoomId }}</div>
+        
+          <div v-if="selectedRoomHasPassword" class="form-group">
+            <label for="join-room-password">房间密码</label>
+            <input
+              id="join-room-password"
+              v-model="joinRoomPassword"
+              type="password"
+              placeholder="请输入房间密码"
+              @keyup.enter="handleJoinRoomModal"
+            />
           </div>
         </div>
         <div class="modal-buttons">
@@ -119,7 +143,7 @@ import { useSocket } from '@/composables/useSocket'
 import { roomApi } from '@/services/apiService'
 import GameMessage from '@/components/GameMessage.vue'
 import { validatePlayerName, generateRoomId } from '@/utils/gameHelper'
-import type { RoomUpdatedData, GameStartedData, RoomListItem, RoomListData } from '@/types'
+import type { RoomUpdatedData, GameStartedData, RoomListItem, RoomListData, JoinRoomFailedData } from '@/types'
 
 const router = useRouter()
 const playerStore = usePlayerStore()
@@ -139,8 +163,11 @@ const rooms = ref<RoomListItem[]>([])
 const showCreateModal = ref(false)
 const showJoinModal = ref(false)
 const createPlayerName = ref('')
+const createRoomPassword = ref('')
 const joinPlayerName = ref('')
+const joinRoomPassword = ref('')
 const selectedRoomId = ref('')
+const selectedRoomHasPassword = ref(false)
 
 // 消息提示
 const showMessage = ref(false)
@@ -170,8 +197,9 @@ const roomStatusText = (status: string): string => {
 // 处理房间点击
 const handleRoomClick = (room: RoomListItem) => {
   if (room.roomStatus === 'waiting') {
-    // 显示加入房间 Modal
     selectedRoomId.value = room.id
+    selectedRoomHasPassword.value = !!room.hasPassword
+    joinRoomPassword.value = ''
     showJoinModal.value = true
   } else if (room.roomStatus === 'full') {
     showToast('该房间已满员', 'info')
@@ -201,10 +229,14 @@ const handleJoinRoomModal = () => {
   })
 
   // 发送加入房间请求
-  socket.joinRoom({
+  const joinData: { roomId: string; playerName: string; password?: string } = {
     roomId: selectedRoomId.value,
     playerName: joinPlayerName.value.trim()
-  })
+  }
+  if (joinRoomPassword.value) {
+    joinData.password = joinRoomPassword.value
+  }
+  socket.joinRoom(joinData)
 }
 
 // 监听房间更新
@@ -250,6 +282,13 @@ const handleOnlineCountUpdated = (data: { count: number }) => {
   onlinePlayerCount.value = data.count
 }
 
+// 监听加入房间失败
+const handleJoinRoomFailed = (data: JoinRoomFailedData) => {
+  console.log('加入房间失败:', data)
+  isLoading.value = false
+  showToast(data.message || '加入房间失败', 'error')
+}
+
 // 加载房间列表
 const loadRooms = async () => {
   try {
@@ -291,13 +330,17 @@ const handleCreateRoomModal = () => {
     score: 1000
   })
 
+  const roomPassword = createRoomPassword.value.trim() || undefined
+
   // 通过API创建房间
-  roomApi.createRoom(newRoomId, createPlayerName.value.trim()).then(() => {
-    // 通过WebSocket加入房间
+  roomApi.createRoom(newRoomId, createPlayerName.value.trim(), roomPassword).then(() => {
+    // 通过WebSocket加入房间（房主自动跳过密码验证，因为是第一个加入）
     socket.joinRoom({
       roomId: newRoomId,
-      playerName: createPlayerName.value.trim()
+      playerName: createPlayerName.value.trim(),
+      password: roomPassword
     })
+    createRoomPassword.value = ''
     isLoading.value = false
   }).catch(error => {
     console.error('创建房间失败:', error)
@@ -314,6 +357,7 @@ onMounted(() => {
   socket.on('gameStarted', handleGameStarted)
   socket.on('onlineCountUpdated', handleOnlineCountUpdated)
   socket.on('roomListUpdated', handleRoomListUpdated)
+  socket.on('joinRoomFailed', handleJoinRoomFailed)
   
   // 加载房间列表 (API)
   loadRooms()
@@ -331,6 +375,7 @@ onUnmounted(() => {
   socket.off('gameStarted', handleGameStarted)
   socket.off('onlineCountUpdated', handleOnlineCountUpdated)
   socket.off('roomListUpdated', handleRoomListUpdated)
+  socket.off('joinRoomFailed', handleJoinRoomFailed)
   
   // 清理定时器
   if (intervalId) {
@@ -513,10 +558,17 @@ onUnmounted(() => {
 }
 
 .room-id {
+  display: flex;
+  align-items: center;
   font-size: 1rem;
   font-weight: 600;
   color: #333;
   margin-bottom: 5px;
+}
+
+.lock-icon {
+  margin-right: 4px;
+  font-size: 0.85rem;
 }
 
 .room-players {

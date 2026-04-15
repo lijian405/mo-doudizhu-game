@@ -22,14 +22,16 @@ export const roomApi = {
   },
 
   // 创建房间
-  createRoom: async (roomId: string, ownerName: string) => {
+  createRoom: async (roomId: string, ownerName: string, password?: string) => {
     try {
+      const body: Record<string, string> = { roomId, ownerName }
+      if (password) body.password = password
       const response = await fetch(`${API_BASE_URL}/rooms`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ roomId, ownerName })
+        body: JSON.stringify(body)
       })
       if (!response.ok) {
         throw new Error('创建房间失败')

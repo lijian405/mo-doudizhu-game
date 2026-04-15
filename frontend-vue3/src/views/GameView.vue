@@ -502,6 +502,7 @@ const handleCountdownUpdated = (data: CountdownUpdatedData) => {
 // 监听出牌失败
 const handlePlayCardsFailed = (data: PlayCardsFailedData) => {
   showToast(data.message, 'error')
+  gameStore.clearSelectedCards()
 }
 
 const handleGameAborted = (data: GameAbortedData) => {
