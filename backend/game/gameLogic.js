@@ -522,7 +522,9 @@ function getHintCards(playerCards, lastCards, isFreeTurn) {
 
   const allSorted = [...cards].sort(sortCardAsc);
 
-  // 轮回到自己/出牌区为空：选手里“最小的合法出牌”（按关键点数最小，其次张数最少）
+  // 轮回到自己/出牌区为空：选手里“最小的合法出牌”
+  // 规则1：仅按牌型点数从小到大判定（无视张数）
+  // 规则2：同点数下，优先选完整牌型（炸弹>三张>对子>单张），绝不拆牌
   if (isFreeTurn || !lastCards || lastCards.length === 0) {
     /** @type {any[][]} */
     const freeCandidates = [];
@@ -587,7 +589,7 @@ function getHintCards(playerCards, lastCards, isFreeTurn) {
       }
     }
 
-    // 选最小的合法牌型
+    // ✅ 核心最终修改：排序规则完全符合斗地主习惯
     const valid = freeCandidates
       .map(cs => [...cs].sort(sortCardAsc))
       .filter(cs => cs.length > 0 && getCardType(cs) !== 'invalid');
@@ -595,9 +597,12 @@ function getHintCards(playerCards, lastCards, isFreeTurn) {
     valid.sort((a, b) => {
       const av = getCardsValue(a);
       const bv = getCardsValue(b);
+      // 第一优先级：点数从小到大
       if (av !== bv) return av - bv;
-      if (a.length !== b.length) return a.length - b.length;
-      // 稳定排序：按牌面字典序
+      // 第二优先级：同点数下，张数从多到少（炸弹>三张>对子>单张）
+      // 这一行彻底解决了“手里有33却选单张3”的问题
+      if (a.length !== b.length) return b.length - a.length;
+      // 第三优先级：点数和张数都相同，按牌面字典序稳定排序
       for (let i = 0; i < Math.min(a.length, b.length); i++) {
         const ak = `${a[i].value}|${a[i].rank}|${a[i].suit}`;
         const bk = `${b[i].value}|${b[i].rank}|${b[i].suit}`;
