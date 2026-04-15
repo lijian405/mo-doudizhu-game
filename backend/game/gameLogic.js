@@ -415,12 +415,7 @@ class Game {
       
       this.lastCards = cards;
       this.lastPlayerId = playerId;
-      // 控制台输出上面三个变量
-      console.log('当前玩家:', playerId);
-      console.log('当前出牌:', cards);
-      console.log('当前牌数:', player.cardCount);
-      console.log('当前牌:', player.cards);
-    
+
       // 检查是否获胜
       if (player.cards.length === 0) {
         this.status = 'ended';

@@ -59,7 +59,6 @@ export const useGameStore = defineStore('game', () => {
   const getPlayerCardCount = (playerId: string): number => {
     const player = gameState.value?.players.find(p => p.id === playerId)
     if (!player) return 0
-    console.log('player', player)
     return player.cardCount ?? player.cards?.length ?? 0
   }
 

@@ -69,6 +69,16 @@
       </div>
     </div>
 
+    <!-- 卡牌飞行动画 -->
+    <CardFlyAnimation
+      :show="isPlayingAnimation"
+      :cards="animationCards"
+      :start-position="animationStartPosition"
+      :end-position="animationEndPosition"
+      :direction="animationDirection"
+      @animation-end="handleAnimationEnd"
+    />
+
     <!-- 游戏主界面 -->
     <div class="game-container">
       <!-- 顶部信息条 -->
@@ -89,12 +99,15 @@
         :is-current-turn="isPlayerTurn(leftPlayer.id)"
         :is-landlord="leftPlayer.id === gameStore.landlordPlayerId"
         :countdown="gameStore.countdown"
+        :avatar-url="leftPlayer.avatar"
+        :is-animating="isPlayingAnimation"
       />
 
       <!-- 出牌区域（中间） -->
       <PlayArea
         :cards="lastPlayedCards"
         :last-player-name="lastPlayerName"
+        :is-animating="isPlayingAnimation"
       />
 
       <!-- 右侧玩家 -->
@@ -107,6 +120,8 @@
         :is-current-turn="isPlayerTurn(rightPlayer.id)"
         :is-landlord="rightPlayer.id === gameStore.landlordPlayerId"
         :countdown="gameStore.countdown"
+        :avatar-url="rightPlayer.avatar"
+        :is-animating="isPlayingAnimation"
       />
 
       <!-- 底部玩家（自己） -->
@@ -143,6 +158,8 @@
           :countdown="gameStore.countdown"
           :selected-cards="gameStore.selectedCards"
           :show-turn-hint="(gameStore.gameState?.status ?? '') === 'playing'"
+          :avatar-url="playerStore.currentPlayer?.avatar"
+          :is-animating="isPlayingAnimation"
           @card-click="handleCardClick"
         />
       </div>
@@ -161,6 +178,7 @@ import PlayerArea from '@/components/PlayerArea.vue'
 import PlayArea from '@/components/PlayArea.vue'
 import GameTopBar from '@/components/GameTopBar.vue'
 import GameMessage from '@/components/GameMessage.vue'
+import CardFlyAnimation from '@/components/CardFlyAnimation.vue'
 import type {
   Card,
   CardsPlayedData,
@@ -194,6 +212,13 @@ const callingInfo = ref<CallingInfo>({
 })
 const myScore = ref(0)
 const currentCallerIndex = ref(0)
+
+// 动画相关状态
+const isPlayingAnimation = ref(false)
+const animationCards = ref<Card[]>([])
+const animationStartPosition = ref({ x: 0, y: 0 })
+const animationEndPosition = ref({ x: 0, y: 0 })
+const animationDirection = ref<'left' | 'right' | 'bottom'>('bottom')
 
 // 计算属性
 const leftPlayer = computed(() => roomStore.getPlayerByPosition(0))
@@ -250,6 +275,76 @@ const showToast = (message: string, type: 'error' | 'success' | 'info' = 'info')
   setTimeout(() => {
     showMessage.value = false
   }, 3000)
+}
+
+// 获取元素位置
+const getElementPosition = (selector: string) => {
+  const element = document.querySelector(selector)
+  if (element) {
+    const rect = element.getBoundingClientRect()
+    return {
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2
+    }
+  }
+  return { x: 0, y: 0 }
+}
+
+// 开始卡牌飞行动画
+const startCardFlyAnimation = (cards: Card[], direction: 'left' | 'right' | 'bottom') => {
+  return new Promise<void>((resolve) => {
+    // 计算起始位置
+    let startX = 0
+    let startY = 0
+    
+    // 根据方向计算起始位置
+    switch (direction) {
+      case 'left':
+        // 左侧玩家位置
+        startX = 100
+        startY = 100
+        break
+      case 'right':
+        // 右侧玩家位置
+        startX = window.innerWidth - 200
+        startY = 100
+        break
+      case 'bottom':
+        // 底部玩家卡牌区域位置
+        const bottomCardsPosition = getElementPosition('.player-area--bottom .player-area__cards')
+        startX = bottomCardsPosition.x
+        startY = bottomCardsPosition.y
+        break
+    }
+    
+    // 计算出牌区位置
+    const playAreaPosition = getElementPosition('.play-area__cards')
+    const endX = playAreaPosition.x
+    const endY = playAreaPosition.y
+    
+    // 设置动画状态
+    animationCards.value = cards
+    animationStartPosition.value = { x: startX, y: startY }
+    animationEndPosition.value = { x: endX, y: endY }
+    animationDirection.value = direction
+    isPlayingAnimation.value = true
+    
+    // 监听动画结束
+    const handleEnd = () => {
+      isPlayingAnimation.value = false
+      resolve()
+    }
+    
+    // 临时添加事件监听器
+    setTimeout(() => {
+      handleEnd()
+    }, 600)
+  })
+}
+
+// 处理动画结束
+const handleAnimationEnd = () => {
+  isPlayingAnimation.value = false
 }
 
 // 检查是否是某个玩家的回合
@@ -438,10 +533,25 @@ const handleBackToRoom = () => {
 }
 
 // 监听出牌
-const handleCardsPlayed = (data: CardsPlayedData) => {
+const handleCardsPlayed = async (data: CardsPlayedData) => {
   console.log('出牌:', data)
 
   if (data.cards && data.cards.length > 0) {
+    // 确定出牌方向
+    let direction: 'left' | 'right' | 'bottom' = 'bottom'
+    if (data.playerId === leftPlayer.value?.id) {
+      direction = 'left'
+    } else if (data.playerId === rightPlayer.value?.id) {
+      direction = 'right'
+    }
+    
+    // 只有非底部玩家（自己）才触发动画
+    if (data.playerId !== playerStore.playerId) {
+      // 开始动画
+      await startCardFlyAnimation(data.cards, direction)
+    }
+    
+    // 添加出牌记录
     const name =
       data.playerName ??
       gameStore.gameState?.players.find(p => p.id === data.playerId)?.name ??

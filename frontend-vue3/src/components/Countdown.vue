@@ -11,6 +11,8 @@
 </template>
 
 <script setup lang="ts">
+import countBg from '@/assets/images/count_bg.png'
+
 interface Props {
   countdown: number
 }
@@ -23,24 +25,22 @@ defineProps<Props>()
   display: inline-flex;
   justify-content: center;
   align-items: center;
-  width: 32px;
-  height: 32px;
-  background-color: #f44336;
-  color: white;
-  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  background-image: url('@/assets/images/count_bg.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  color: #333;
   font-weight: bold;
-  font-size: 14px;
-  box-shadow: 0 2px 8px rgba(244, 67, 54, 0.4);
+  font-size: 16px;
   animation: pulse 1s infinite;
 
   &--warning {
-    background-color: #ff9800;
-    box-shadow: 0 2px 8px rgba(255, 152, 0, 0.4);
+    animation: pulse 0.8s infinite;
   }
 
   &--danger {
-    background-color: #f44336;
-    box-shadow: 0 2px 8px rgba(244, 67, 54, 0.6);
     animation: pulse 0.5s infinite;
   }
 }

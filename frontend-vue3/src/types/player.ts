@@ -11,6 +11,7 @@ export type PlayerRole = 'landlord' | 'farmer'
 export interface PlayerBase {
   id: string
   name: string
+  avatar?: string
   role?: PlayerRole
   isLandlord: boolean
   score: number
@@ -40,6 +41,7 @@ export interface PlayerState {
 export interface CurrentPlayer {
   id: string
   name: string
+  avatar?: string
   roomId: string
   score: number
 }

@@ -1,25 +1,38 @@
 <template>
   <div class="player-area" :class="`player-area--${position}`">
-    <!-- 倒计时 -->
-    <Countdown
-      v-if="isCurrentTurn && countdown > 0"
-      :countdown="countdown"
-      class="player-area__countdown"
-    />
+    <div class="player-area__content">
+      <!-- 倒计时 -->
+      <Countdown
+        v-if="isCurrentTurn && countdown > 0"
+        :countdown="countdown"
+        class="player-area__countdown"
+      />
 
-    <!-- 玩家信息 -->
-    <div class="player-area__info">
-      <div class="player-area__name">
-        <!-- 地主标识 -->
-        <div
-          v-if="isLandlord"
-          class="player-area__landlord-badge"
-        >
-          地主
+      <!-- 玩家信息 -->
+      <div class="player-area__info">
+        <!-- 头像区域（包含地主帽子） -->
+        <div class="player-area__avatar-container">
+          <!-- 地主帽子 -->
+          <div v-if="isLandlord" class="player-area__landlord-hat">
+            <img :src="landlordHat" alt="地主" />
+          </div>
+          <!-- 头像 -->
+          <div class="player-area__avatar">
+            <img
+              :src="avatarUrl || defaultAvatar"
+              :alt="playerName"
+            />
+          </div>
         </div>
-        {{ playerName }}
+
+        <!-- 玩家名称和分值 -->
+        <div class="player-area__details">
+          <div class="player-area__name">
+            {{ playerName }}
+          </div>
+          <div class="player-area__score">分值: {{ score }}</div>
+        </div>
       </div>
-      <div class="player-area__score">分值: {{ score }}</div>
     </div>
 
     <!-- 卡牌区域 -->
@@ -35,9 +48,10 @@
       <!-- 自己的牌（支持鼠标拖动多选） -->
       <template v-if="isSelf">
         <div
-          v-for="card in cards"
+          v-for="(card, index) in cards"
           :key="`${card.suit}-${card.rank}`"
           class="card-drag-wrapper"
+          :data-card-index="index"
           @mousedown.prevent="onCardMouseDown(card)"
           @mouseenter="onCardMouseEnter(card)"
         >
@@ -62,6 +76,8 @@ import type { Card, PlayerPosition } from '@/types'
 import CardComponent from './Card.vue'
 import CardBack from './CardBack.vue'
 import Countdown from './Countdown.vue'
+import defaultAvatar from '@/assets/images/default_avatar.jpg'
+import landlordHat from '@/assets/images/dz_hat.png'
 
 interface Props {
   position: PlayerPosition
@@ -75,6 +91,8 @@ interface Props {
   countdown?: number
   selectedCards?: Card[]
   showTurnHint?: boolean
+  avatarUrl?: string
+  isAnimating?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -84,7 +102,9 @@ const props = withDefaults(defineProps<Props>(), {
   isLandlord: false,
   countdown: 0,
   selectedCards: () => [],
-  showTurnHint: false
+  showTurnHint: false,
+  avatarUrl: '',
+  isAnimating: false
 })
 
 const emit = defineEmits<{
@@ -177,6 +197,12 @@ onUnmounted(() => {
     grid-area: bottom;
   }
 
+  &__content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
   &__countdown {
     font-size: 24px;
     font-weight: bold;
@@ -189,29 +215,59 @@ onUnmounted(() => {
   }
 
   &__info {
-    text-align: center;
+    display: flex;
+    align-items: center;
+    gap: 12px;
     color: white;
+  }
+
+  &__avatar-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &__landlord-hat {
+    position: absolute;
+    top: -30px;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+  }
+
+  &__avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 2px solid #ffcc00;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  &__details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
   }
 
   &__name {
     font-size: 16px;
     font-weight: 600;
-    margin-bottom: 4px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    justify-content: center;
-  }
-
-  &__landlord-badge {
-    display: inline-block;
-    padding: 2px 8px;
-    background-color: #ff6b6b;
-    color: white;
-    border-radius: 10px;
-    font-size: 10px;
-    font-weight: bold;
-    box-shadow: 0 2px 6px rgba(255, 107, 107, 0.3);
   }
 
   &__score {

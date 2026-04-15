@@ -1,4 +1,4 @@
-# 联机斗地主
+# 多人在线联机斗地主游戏
 
 多人实时斗地主：Node.js 后端（Express + 原生 WebSocket）+ Vue 3 前端，房间与状态持久化使用 MySQL。
 
@@ -6,14 +6,22 @@
 
 支持创建/加入房间、三人开局、叫分、出牌与过牌、出牌倒计时、断线中止对局等。主客户端为 **Vue 3 + TypeScript**；仓库内仍保留一套静态 HTML/JS 页面作为可选入口。
 
+## 界面截图
+
+![截图1](./doc/screenshot1.png)
+
+![截图2](./doc/screenshot2.png)
+
+![截图3](./doc/screenshot3.png)
+
 ## 技术栈
 
-| 层级 | 技术 |
-|------|------|
-| 后端 | Node.js、Express、`ws`（WebSocket，路径 `/ws`）、MySQL（`mysql2`） |
-| 实时协议 | JSON 文本帧：`{ "type": "<事件名>", "payload": { ... } }`（与历史 Socket.io 事件名对齐） |
-| 主前端 | Vue 3、Vue Router、Pinia、Vite、Sass |
-| 可选静态前端 | `frontend/`（HTML/CSS/JS，直连后端同源） |
+| 层级     | 技术                                                                      |
+| ------ | ----------------------------------------------------------------------- |
+| 后端     | Node.js、Express、`ws`（WebSocket，路径 `/ws`）、MySQL（`mysql2`）                |
+| 实时协议   | JSON 文本帧：`{ "type": "<事件名>", "payload": { ... } }`（与历史 Socket.io 事件名对齐） |
+| 主前端    | Vue 3、Vue Router、Pinia、Vite、Sass                                        |
+| 可选静态前端 | `frontend/`（HTML/CSS/JS，直连后端同源）                                         |
 
 更细的协议与流程见仓库根目录 [doc.md](./doc.md)。
 
@@ -68,7 +76,7 @@ npm start
 # 或开发热重载：npm run dev
 ```
 
-默认 **HTTP**：`http://localhost:3000`  
+默认 **HTTP**：`http://localhost:3000`\
 **WebSocket**：`ws://localhost:3000/ws`
 
 Express 会托管 `frontend/` 静态资源，因此也可直接访问例如：`http://localhost:3000/html/index.html`。
@@ -83,7 +91,7 @@ npm install
 npm run dev
 ```
 
-默认 Vite：`http://localhost:5173`，并将 `/api`、`/ws` 代理到 `http://localhost:3000`。  
+默认 Vite：`http://localhost:5173`，并将 `/api`、`/ws` 代理到 `http://localhost:3000`。\
 生产构建：
 
 ```bash
@@ -108,3 +116,4 @@ npm run build
 - 开局需要 **3** 名玩家在房内。
 - 连接 ID 为服务端生成的 UUID，与早期 Socket.io 的 socket id 不同。
 - 数据库表结构与环境变量以 `backend/db/db.js` 为准；首次使用请按项目约定初始化 MySQL。
+
