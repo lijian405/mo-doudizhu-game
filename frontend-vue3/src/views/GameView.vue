@@ -126,81 +126,85 @@
 
       <!-- 底部玩家（自己） -->
       <div class="bottom-area">
-        <!-- 底部区域布局 -->
-        <div class="bottom-area__layout">
-          <!-- 左侧玩家信息（固定位置） -->
-          <div class="bottom-area__player-info">
-            <div class="player-area__info">
-              <!-- 头像区域（包含地主帽子） -->
-              <div class="player-area__avatar-container">
-                <!-- 地主帽子 -->
-                <div v-if="gameStore.isLandlord" class="player-area__landlord-hat">
-                  <img :src="landlordHat" alt="地主" />
-                </div>
-                <!-- 头像 -->
-                <div class="player-area__avatar">
-                  <img
-                    :src="playerStore.currentPlayer?.avatar || defaultAvatar"
-                    :alt="playerStore.playerName"
-                  />
-                </div>
-              </div>
-
-              <!-- 玩家名称和分值 -->
-              <div class="player-area__details">
-                <div class="player-area__name">
-                  {{ playerStore.playerName }}
-                </div>
-                <div class="player-area__score">分值: {{ playerStore.currentScore }}</div>
-              </div>
-
-              <!-- 倒计时 -->
-              <Countdown
-                v-if="gameStore.isMyTurn && gameStore.countdown > 0"
-                :countdown="gameStore.countdown"
-                class="player-area__countdown"
-              />
-            </div>
-          </div>
-
-          <!-- 右侧操作按钮（顺序与常见斗地主 UI：左不出、右出牌） -->
-          <div class="action-buttons">
-            <!-- 要不起按钮 -->
+        <!-- 操作按钮区域（居中） -->
+        <div class="action-buttons">
+          <!-- 要不起按钮 -->
+          <button
+            v-if="!canBeatLastCards && gameStore.isMyTurn"
+            type="button"
+            class="btn btn--pass btn--game-action"
+            @click="handlePass"
+          >
+            要不起
+          </button>
+          <!-- 不出和出牌按钮 -->
+          <template v-else>
             <button
-              v-if="!canBeatLastCards && gameStore.isMyTurn"
               type="button"
               class="btn btn--pass btn--game-action"
+              :disabled="!gameStore.isMyTurn || !gameStore.canPass"
               @click="handlePass"
             >
-              要不起
+              不出
             </button>
-            <!-- 不出和出牌按钮 -->
-            <template v-else>
-              <button
-                type="button"
-                class="btn btn--pass btn--game-action"
-                :disabled="!gameStore.isMyTurn || !gameStore.canPass"
-                @click="handlePass"
-              >
-                不出
-              </button>
-              <button
-                type="button"
-                class="btn btn--hint btn--game-action"
-                :disabled="!gameStore.isMyTurn || isHintLoading"
-                @click="handleHint"
-              >
-                提示
-              </button>
-              <button
-                type="button"
-                class="btn btn--play btn--game-action"
-                :disabled="!gameStore.isMyTurn || gameStore.selectedCards.length === 0"
-                @click="handlePlayCards"
-              >
-                出牌
-              </button>
-            </template>
+            <button
+              type="button"
+              class="btn btn--hint btn--game-action"
+              :disabled="!gameStore.isMyTurn || isHintLoading"
+              @click="handleHint"
+            >
+              提示
+            </button>
+            <button
+              type="button"
+              class="btn btn--trust btn--game-action"
+              @click="handleTrust"
+            >
+              {{ gameStore.isTrustMode ? '取消托管' : '托管' }}
+            </button>
+            <button
+              type="button"
+              class="btn btn--play btn--game-action"
+              :disabled="!gameStore.isMyTurn || gameStore.selectedCards.length === 0"
+              @click="handlePlayCards"
+            >
+              出牌
+            </button>
+          </template>
+        </div>
+
+        <!-- 玩家信息（相对于操作按钮区域定位在左上角） -->
+        <div class="bottom-area__player-info">
+          <div class="player-area__info">
+            <!-- 头像区域（包含地主帽子） -->
+            <div class="player-area__avatar-container">
+              <!-- 地主帽子 -->
+              <div v-if="gameStore.isLandlord" class="player-area__landlord-hat">
+                <img :src="landlordHat" alt="地主" />
+              </div>
+              <!-- 头像 -->
+              <div class="player-area__avatar">
+                <img
+                  :src="playerStore.currentPlayer?.avatar || defaultAvatar"
+                  :alt="playerStore.playerName"
+                />
+              </div>
+            </div>
+
+            <!-- 玩家名称和分值 -->
+            <div class="player-area__details">
+              <div class="player-area__name">
+                {{ playerStore.playerName }}
+              </div>
+              <div class="player-area__score">分值: {{ playerStore.currentScore }}</div>
+            </div>
+
+            <!-- 倒计时 -->
+            <Countdown
+              v-if="gameStore.isMyTurn && gameStore.countdown > 0"
+              :countdown="gameStore.countdown"
+              class="player-area__countdown"
+            />
           </div>
         </div>
 
@@ -250,7 +254,8 @@ import type {
   GameAbortedData,
   CallingInfo,
   RoomTimerUpdatedData,
-  HintResultData
+  HintResultData,
+  TrustUpdatedData
 } from '@/types'
 
 const router = useRouter()
@@ -473,6 +478,14 @@ const handleHint = () => {
   setTimeout(() => {
     isHintLoading.value = false
   }, 1500)
+}
+
+const handleTrust = () => {
+  if (!roomStore.roomId) return
+  socket.setTrust({
+    roomId: roomStore.roomId,
+    trust: !gameStore.isTrustMode
+  })
 }
 // 叫分相关方法
 const canCallScore = (score: number): boolean => {
@@ -704,6 +717,12 @@ const handleHintResult = (data: HintResultData) => {
   showToast(data.message || '没有更大的牌了', 'info')
 }
 
+const handleTrustUpdated = (data: TrustUpdatedData) => {
+  if (data.playerId === playerStore.playerId) {
+    gameStore.setTrustMode(data.isTrust)
+  }
+}
+
 const handleGameAborted = (data: GameAbortedData) => {
   if (data.roomId !== roomStore.roomId) return
   showToast(data.message, 'info')
@@ -734,6 +753,7 @@ onMounted(() => {
   socket.on('gameAborted', handleGameAborted)
   socket.on('roomTimerUpdated', handleRoomTimerUpdated)
   socket.on('hintResult', handleHintResult)
+  socket.on('trustUpdated', handleTrustUpdated)
 })
 
 onUnmounted(() => {
@@ -746,6 +766,7 @@ onUnmounted(() => {
   socket.off('gameAborted', handleGameAborted)
   socket.off('roomTimerUpdated', handleRoomTimerUpdated)
   socket.off('hintResult', handleHintResult)
+  socket.off('trustUpdated', handleTrustUpdated)
 })
 </script>
 
@@ -795,18 +816,15 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   width: 100%;
-}
-
-.bottom-area__layout {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  width: 100%;
-  gap: 20px;
+  position: relative;
 }
 
 .bottom-area__player-info {
+  position: absolute;
+  top: 0;
+  left: 0;
   display: flex;
+  margin-left: 30px;
   flex-direction: column;
   align-items: flex-start;
   gap: 10px;
@@ -900,17 +918,14 @@ onUnmounted(() => {
 .action-buttons {
   display: flex;
   gap: clamp(18px, 5vw, 28px);
-  margin-top: 10px;
   justify-content: center;
+  margin-bottom: 10px;
   align-items: center;
-  flex: 1;
 }
 
 // 主界面：光泽立体「不出 / 出牌」（参考休闲手游按钮）
 .action-buttons .btn--game-action {
   position: relative;
-  padding: 14px 38px;
-  min-width: 132px;
   font-size: clamp(18px, 4.2vw, 22px);
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -1059,15 +1074,42 @@ onUnmounted(() => {
   }
 }
 
+.action-buttons .btn--trust.btn--game-action {
+  text-shadow:
+    0 2px 0 rgba(60, 20, 0, 0.35),
+    0 1px 2px rgba(0, 0, 0, 0.25);
+  -webkit-text-stroke: 1.5px #5a2a0f;
+  paint-order: stroke fill;
+
+  background: linear-gradient(
+    180deg,
+    #f7e1b1 0%,
+    #f0a050 38%,
+    #e67300 72%,
+    #a34a16 100%
+  );
+  box-shadow:
+    0 5px 0 #6b350f,
+    0 8px 18px rgba(80, 40, 10, 0.35),
+    inset 0 -3px 8px rgba(80, 40, 10, 0.25);
+
+  &:active:not(:disabled) {
+    box-shadow:
+      0 2px 0 #6b350f,
+      0 4px 10px rgba(80, 40, 10, 0.3),
+      inset 0 -2px 4px rgba(80, 40, 10, 0.2);
+  }
+}
+
 .btn {
-  padding: 12px 24px;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   border: none;
-  border-radius: 10px;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s ease;
-  min-width: 120px;
+  padding: 10px 20px;
+  min-width: 100px;
 
   &:disabled {
     opacity: 0.5;
@@ -1365,9 +1407,9 @@ onUnmounted(() => {
   }
 
   .action-buttons .btn--game-action {
-    padding: 10px 24px;
-    min-width: 80px;
-    font-size: clamp(14px, 3vw, 18px);
+    padding: 6px 16px;
+    min-width: 60px;
+    font-size: clamp(12px, 2.5vw, 16px);
   }
 
   .player-area__bottom-layout {
@@ -1468,9 +1510,9 @@ onUnmounted(() => {
   }
 
   .btn {
-    padding: 10px 20px;
+    padding: 8px 16px;
     font-size: 14px;
-    min-width: 100px;
+    min-width: 80px;
   }
 }
 </style>

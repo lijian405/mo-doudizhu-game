@@ -13,7 +13,8 @@ import type {
   CallLandlordData,
   PlayCardsData,
   PassData,
-  HintRequestData
+  HintRequestData,
+  TrustData
 } from '@/types'
 
 function getWsUrl(): string {
@@ -169,6 +170,7 @@ export function useSocket() {
   const pass = (data: PassData) => emit('pass', data)
   const hintRequest = (data: HintRequestData) => emit('hintRequest', data)
   const getRooms = () => emit('getRooms')
+  const setTrust = (data: TrustData) => emit('trust', data)
 
   onMounted(() => {
     connect()
@@ -192,6 +194,7 @@ export function useSocket() {
     playCards,
     pass,
     hintRequest,
-    getRooms
+    getRooms,
+    setTrust
   }
 }

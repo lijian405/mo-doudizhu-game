@@ -53,6 +53,12 @@ export interface HintRequestData {
   roomId: string
 }
 
+// 托管
+export interface TrustData {
+  roomId: string
+  trust: boolean
+}
+
 // ==================== 服务器发送事件 ====================
 
 // 房间更新
@@ -121,6 +127,12 @@ export interface HintResultData {
   message?: string
 }
 
+export interface TrustUpdatedData {
+  playerId: string
+  playerName: string
+  isTrust: boolean
+}
+
 // 房间列表
 export interface RoomListData {
   rooms: RoomListItem[]
@@ -161,6 +173,7 @@ export const SocketEvents = {
   PASS: 'pass',
   HINT_REQUEST: 'hintRequest',
   GET_ROOMS: 'getRooms',
+  TRUST: 'trust',
 
   // 服务器发送
   ROOM_UPDATED: 'roomUpdated',
@@ -178,6 +191,7 @@ export const SocketEvents = {
   ROOM_DELETED: 'roomDeleted',
   ROOM_TIMER_UPDATED: 'roomTimerUpdated',
   HINT_RESULT: 'hintResult',
+  TRUST_UPDATED: 'trustUpdated',
   GET_ONLINE_COUNT: 'getOnlineCount'
 } as const
 
@@ -202,6 +216,7 @@ export interface ServerToClientEvents {
   roomDeleted: (data: RoomDeletedData) => void
   roomTimerUpdated: (data: RoomTimerUpdatedData) => void
   hintResult: (data: HintResultData) => void
+  trustUpdated: (data: TrustUpdatedData) => void
 }
 
 export interface ClientToServerEvents {
@@ -215,6 +230,7 @@ export interface ClientToServerEvents {
   hintRequest: (data: HintRequestData) => void
   getRooms: () => void
   getOnlineCount: () => void
+  trust: (data: TrustData) => void
 }
 
 export interface RoomTimerUpdatedData {

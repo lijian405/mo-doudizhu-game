@@ -4,6 +4,7 @@ const { Game, canPlayerBeatCards, getHintCards } = require('../game/gameLogic');
 const { updateRoomStatus, deleteRoom, getRoomByRoomId, getParameter } = require('../db/db');
 const { WsHub } = require('./wsHub');
 const { setAdminContext } = require('./adminContext');
+const handlers = require('./handlers');
 
 /**
  * @param {import('http').Server} server
@@ -16,7 +17,7 @@ function attachWebSocketHandlers(server, state) {
   /** @type {Map<string, { startedAt: number, interval: NodeJS.Timeout }>} */
   const roomTimers = new Map();
   let ROOM_MAX_SECONDS = 30 * 60;
-  
+
   // 从数据库加载配置
   async function loadConfig() {
     try {
@@ -28,7 +29,7 @@ function attachWebSocketHandlers(server, state) {
       console.error('加载配置失败:', e);
     }
   }
-  
+
   loadConfig();
 
   function stopRoomTimer(roomId) {
@@ -114,72 +115,214 @@ function attachWebSocketHandlers(server, state) {
     });
   }
 
+  // 常量提取（可统一配置）
+  const COUNTDOWN_SECONDS = 30;
+
+  /** 清除指定 Game 实例上的出牌倒计时（含已从 games 中替换掉的旧局） */
+  function clearGameCountdownTimer(game) {
+    if (!game?.countdownTimer) return;
+    clearInterval(game.countdownTimer);
+    game.countdownTimer = null;
+  }
+
+  /**
+   * 开始房间倒计时
+   * @param {string} roomId - 房间ID
+   */
   function startCountdown(roomId) {
     const game = games.get(roomId);
+    // 基础校验：游戏不存在/未开始，直接退出
     if (!game || game.status !== 'playing') return;
 
-    if (game.countdownTimer) {
-      clearInterval(game.countdownTimer);
-    }
+    // 清空已有定时器，防止重复计时
+    clearGameCountdownTimer(game);
+    // 重置倒计时
+    game.countdown = COUNTDOWN_SECONDS;
 
-    if (game.lastPlayerId === game.players[game.currentPlayerIndex].id) {
-      hub.broadcastRoom(roomId, 'countdownUpdated', {
-        countdown: 0,
-        currentPlayerIndex: game.currentPlayerIndex
-      });
-      return;
-    }
+    const currentPlayer = game.players[game.currentPlayerIndex];
+    const currentPlayerId = currentPlayer.id;
 
-    game.countdown = 30;
 
-    hub.broadcastRoom(roomId, 'countdownUpdated', {
-      countdown: game.countdown,
-      currentPlayerIndex: game.currentPlayerIndex,
-      players: game.players.map((p) => ({
-        id: p.id,
-        name: p.name
-      }))
-    });
+    // ============== 非托管玩家 → 启动正常倒计时 ==============
+    // 广播初始倒计时
+    broadcastCountdown(roomId, game);
 
+    // 启动定时器
     game.countdownTimer = setInterval(() => {
       game.countdown--;
+      broadcastCountdown(roomId, game);
+      // ============== 核心：托管玩家 → 3秒后立即自动出牌 ==============
+      if (currentPlayer.isTrust && game.countdown >= 3) {
+        handleAutoPlay(roomId, game, currentPlayer, currentPlayerId);
+        return;
+      }
 
-      hub.broadcastRoom(roomId, 'countdownUpdated', {
-        countdown: game.countdown,
-        currentPlayerIndex: game.currentPlayerIndex,
-        players: game.players.map((p) => ({
-          id: p.id,
-          name: p.name
-        }))
-      });
-
+      // 倒计时结束 → 自动出牌/过牌
       if (game.countdown <= 0) {
-        clearInterval(game.countdownTimer);
-        game.countdownTimer = null;
-
-        game.currentPlayerIndex = (game.currentPlayerIndex + 1) % 3;
-
-        const passPlayerId = game.players[(game.currentPlayerIndex + 2) % 3].id;
-        hub.broadcastRoomEach(roomId, 'cardsPlayed', (cid) => ({
-          playerId: passPlayerId,
-          cards: [],
-          players: buildPlayersForConnection(game.players, cid),
-          currentPlayerIndex: game.currentPlayerIndex,
-          gameStatus: game.status,
-          multiplier: game.倍数
-        }));
-
-        startCountdown(roomId);
+        clearGameCountdownTimer(game);
+        handleAutoPlay(roomId, game, currentPlayer, currentPlayerId);
       }
     }, 1000);
   }
 
-  function stopCountdown(roomId) {
-    const game = games.get(roomId);
-    if (game && game.countdownTimer) {
-      clearInterval(game.countdownTimer);
-      game.countdownTimer = null;
+  // -------------------------- 以下为抽离的公共工具函数 --------------------------
+  /**
+   * 广播倒计时状态（抽离重复代码）
+   */
+  function broadcastCountdown(roomId, game) {
+    hub.broadcastRoom(roomId, 'countdownUpdated', {
+      countdown: game.countdown,
+      currentPlayerIndex: game.currentPlayerIndex,
+      players: game.players.map(p => ({ id: p.id, name: p.name }))
+    });
+  }
+
+  /**
+   * 处理【托管/超时】自动出牌/过牌（核心公共逻辑，消除90%冗余）
+   */
+  function handleAutoPlay(roomId, game, currentPlayer, currentPlayerId) {
+    if (game.status !== 'playing') {
+      clearGameCountdownTimer(game);
+      return;
     }
+
+    const isFreeTurn = !game.lastCards || game.lastCards.length === 0 || game.lastPlayerId === currentPlayerId;
+    const hintCards = getHintCards(currentPlayer.cards, game.lastCards, isFreeTurn);
+
+    let playedCards = [];
+    const passPlayerId = currentPlayerId;
+
+    // 1. 执行出牌逻辑
+    if (hintCards?.length) {
+      const playSuccess = game.playCards(currentPlayerId, hintCards);
+      if (playSuccess) {
+        playedCards = hintCards;
+        broadcastPlayCards(roomId, game, currentPlayerId, playedCards);
+
+        // 检查游戏是否结束
+        if (game.status === 'ended') {
+          console.log('handleAutoPlay,游戏结束');
+          handleGameEnd(roomId, game);
+          return;
+        }
+      }
+    }
+
+    // 2. 出牌失败/无牌可出 → 切换玩家
+    if (!playedCards.length) {
+      game.currentPlayerIndex = (game.currentPlayerIndex + 1) % 3;
+      broadcastPassCards(roomId, game, passPlayerId);
+    }
+
+    // 3. 重启下一轮倒计时
+    startCountdown(roomId);
+  }
+
+  /**
+   * 广播【出牌】事件（抽离重复代码）
+   */
+  function broadcastPlayCards(roomId, game, playerId, cards) {
+    hub.broadcastRoomEach(roomId, 'cardsPlayed', (cid) => {
+      const nextPlayer = game.players[game.currentPlayerIndex];
+      let canBeatLastCards = true;
+      // 如果当前玩家不是托管玩家，检查是否可以出牌
+      if (!nextPlayer.isTrust) {
+        canBeatLastCards = canPlayerBeatCards(nextPlayer.cards, cards);
+      }
+
+      if (game.lastPlayerId !== nextPlayer.id) {
+        canBeatLastCards = canPlayerBeatCards(nextPlayer.cards, cards);
+      }
+
+
+      return {
+        playerId,
+        cards,
+        players: buildPlayersForConnection(game.players, cid),
+        currentPlayerIndex: game.currentPlayerIndex,
+        gameStatus: game.status,
+        multiplier: game.倍数,
+        canBeatLastCards: cid === nextPlayer.id ? canBeatLastCards : undefined
+      };
+    });
+  }
+
+  /**
+   * 广播【过牌】事件（抽离重复代码）
+   * 须带上 canBeatLastCards，否则客户端会沿用上一轮出牌里的旧值，人类玩家看不到「要不起」
+   */
+  function broadcastPassCards(roomId, game, playerId) {
+    hub.broadcastRoomEach(roomId, 'cardsPlayed', (cid) => {
+      const nextPlayer = game.players[game.currentPlayerIndex];
+      let canBeatLastCards = true;
+      if (game.lastPlayerId !== nextPlayer.id) {
+        canBeatLastCards = canPlayerBeatCards(nextPlayer.cards, game.lastCards);
+      }
+      return {
+        playerId: playerId,
+        cards: [],
+        players: buildPlayersForConnection(game.players, cid),
+        currentPlayerIndex: game.currentPlayerIndex,
+        gameStatus: game.status,
+        multiplier: game.倍数,
+        canBeatLastCards: cid === nextPlayer.id ? canBeatLastCards : undefined
+      };
+    });
+  }
+
+  /**
+   * 处理游戏结束逻辑（抽离重复代码）
+   */
+  function handleGameEnd(roomId, game) {
+    clearGameCountdownTimer(game);
+    stopRoomTimer(roomId);
+
+    const winner = game.players.find((p) => p.cards.length === 0);
+    if (!winner) {
+      console.warn('handleGameEnd: no player with empty hand, skip settlement broadcast');
+      broadcastRoomList();
+      return;
+    }
+
+    const scores = game.calculateScores();
+    const winnerId = winner.id;
+    const isLandlordWin = winnerId === game.地主PlayerId;
+
+    // 广播游戏结束
+    hub.broadcastRoom(roomId, 'gameEnded', {
+      winner: isLandlordWin ? 'landlord' : 'farmers',
+      landlordPlayerId: game.地主PlayerId,
+      scores,
+      baseScore: game.底分,
+      multiplier: game.倍数,
+      isSpring: game.春天,
+      players: game.players.map(p => ({ id: p.id, name: p.name, cards: p.cards }))
+    });
+
+    // 重置玩家托管状态
+    const room = rooms.get(roomId);
+    if (room) {
+      room.players.forEach(p => {
+        p.isTrust = false;
+        hub.broadcastRoom(roomId, 'trustUpdated', {
+          playerId: p.id,
+          playerName: p.name,
+          isTrust: false
+        });
+      });
+
+      // 更新房间状态（捕获异常）
+      updateRoomStatus(roomId, 'waiting', room.players.length).catch(err =>
+        console.error('更新房间状态失败:', err)
+      );
+    }
+
+    // 刷新房间列表
+    broadcastRoomList();
+  }
+
+  function stopCountdown(roomId) {
+    clearGameCountdownTimer(games.get(roomId));
   }
 
   function isGameInProgress(roomId) {
@@ -331,319 +474,43 @@ function attachWebSocketHandlers(server, state) {
       try {
         switch (type) {
           case 'getOnlineCount':
-            hub.sendTo(connectionId, 'onlineCountUpdated', { count: runtime.onlinePlayerCount });
+            await handlers.getOnlineCount(connectionId, data, hub, runtime);
             break;
 
-          case 'joinRoom': {
-            const { roomId, playerName, password } = data;
-            console.log('加入房间请求:', data);
-
-            try {
-              const dbRoom = await getRoomByRoomId(roomId);
-              if (!dbRoom) {
-                hub.sendTo(connectionId, 'joinRoomFailed', { message: '房间不存在' });
-                return;
-              }
-
-              if (dbRoom.password) {
-                if (!password || password !== dbRoom.password) {
-                  hub.sendTo(connectionId, 'joinRoomFailed', { message: '房间密码错误' });
-                  return;
-                }
-              }
-
-              if (!rooms.has(roomId)) {
-                rooms.set(roomId, {
-                  id: roomId,
-                  players: [],
-                  status: dbRoom.status,
-                  ownerId: null,
-                  hasPassword: !!dbRoom.password
-                });
-              }
-            } catch (error) {
-              console.error('查询房间失败:', error);
-              hub.sendTo(connectionId, 'joinRoomFailed', { message: '查询房间失败' });
-              return;
-            }
-
-            const room = rooms.get(roomId);
-            const player = {
-              id: connectionId,
-              name: playerName,
-              roomId,
-              cards: []
-            };
-
-            room.players.push(player);
-
-            if (room.players.length === 1) {
-              room.ownerId = connectionId;
-              console.log(`${playerName}成为房间${roomId}的房主`);
-            }
-
-            players.set(connectionId, player);
-            hub.setRoom(connectionId, roomId);
-
-            let roomStatus = 'waiting';
-            if (room.players.length >= 3) {
-              roomStatus = 'full';
-            }
-
-            try {
-              await updateRoomStatus(roomId, roomStatus, room.players.length);
-            } catch (error) {
-              console.error('更新房间状态失败:', error);
-            }
-
-            hub.broadcastRoom(roomId, 'roomUpdated', {
-              roomId: room.id,
-              players: room.players.map((p) => ({ id: p.id, name: p.name }))
-            });
-
-            broadcastRoomList();
-            console.log(`${playerName}加入房间${roomId}`);
+          case 'joinRoom':
+            await handlers.joinRoom(connectionId, data, hub, runtime, rooms, players, broadcastRoomList);
             break;
-          }
 
-          case 'leaveRoom': {
-            const { roomId } = data;
-            const player = players.get(connectionId);
-            if (!player || player.roomId !== roomId) {
-              return;
-            }
-            await removePlayerFromRoom(connectionId, roomId);
-            hub.clearRoom(connectionId);
+          case 'leaveRoom':
+            await handlers.leaveRoom(connectionId, data, hub, players, removePlayerFromRoom);
             break;
-          }
 
-          case 'startGame': {
-            const { roomId } = data;
-            const room = rooms.get(roomId);
-            if (room && room.players.length >= 3) {
-              room.status = 'calling';
-
-              const game = new Game(roomId, room.players);
-              game.start(runtime.cheatTargetPlayerName || '');
-              games.set(roomId, game);
-
-              try {
-                await updateRoomStatus(roomId, 'playing', room.players.length);
-              } catch (error) {
-                console.error('更新房间状态失败:', error);
-              }
-
-              startRoomTimer(roomId);
-              hub.broadcastRoom(roomId, 'callingStart', { roomId });
-
-              hub.broadcastRoomEach(roomId, 'gameStarted', (cid) => ({
-                room: {
-                  id: room.id,
-                  players: room.players.map((p) => ({ id: p.id, name: p.name })),
-                  status: room.status
-                },
-                players: buildPlayersForConnection(game.players, cid),
-                landlordCards: game.地主Cards,
-                landlordPlayerId: game.地主PlayerId,
-                currentPlayerIndex: game.currentPlayerIndex,
-                baseScore: game.底分,
-                multiplier: game.倍数,
-                callingInfo: {
-                  currentCallerIndex: game.叫牌状态.currentCallerIndex,
-                  highestScore: game.叫牌状态.highestScore,
-                  highestBidder: game.叫牌状态.highestBidder
-                }
-              }));
-
-              broadcastRoomList();
-              console.log(`房间${roomId}开始游戏`);
-            }
+          case 'startGame':
+            await handlers.startGame(connectionId, data, hub, runtime, rooms, games, broadcastRoomList, buildPlayersForConnection, startRoomTimer);
             break;
-          }
 
-          case 'callLandlord': {
-            const { roomId, score } = data;
-            const game = games.get(roomId);
-            if (game) {
-              const success = game.call地主(connectionId, score);
-              if (success) {
-                hub.broadcastRoom(roomId, 'callingUpdated', {
-                  currentCallerIndex: game.叫牌状态.currentCallerIndex,
-                  highestScore: game.叫牌状态.highestScore,
-                  highestBidder: game.叫牌状态.highestBidder,
-                  gameStatus: game.status,
-                  players: game.players.map((p) => ({ id: p.id, name: p.name }))
-                });
-
-                if (game.status === 'playing') {
-                  const room = rooms.get(roomId);
-                  hub.broadcastRoomEach(roomId, 'gameStarted', (cid) => ({
-                    room: {
-                      id: room.id,
-                      players: room.players.map((p) => ({ id: p.id, name: p.name })),
-                      status: room.status
-                    },
-                    players: buildPlayersForConnection(game.players, cid),
-                    landlordCards: game.地主Cards,
-                    landlordPlayerId: game.地主PlayerId,
-                    currentPlayerIndex: game.currentPlayerIndex,
-                    baseScore: game.底分,
-                    multiplier: game.倍数,
-                    gameStarted: true
-                  }));
-
-                  startCountdown(roomId);
-                  broadcastRoomList();
-                }
-              }
-            }
+          case 'callLandlord':
+            await handlers.callLandlord(connectionId, data, hub, rooms, games, broadcastRoomList, buildPlayersForConnection, startCountdown);
             break;
-          }
 
-          case 'playCards': {
-            const { roomId, cards } = data;
-            const game = games.get(roomId);
-            if (!game) return;
-
-            const success = game.playCards(connectionId, cards);
-            if (success) {
-              stopCountdown(roomId);
-
-              hub.broadcastRoomEach(roomId, 'cardsPlayed', (cid) => {
-                // 计算下家是否能大过当前出牌
-                const nextPlayerIndex = game.currentPlayerIndex;
-                const nextPlayer = game.players[nextPlayerIndex];
-                let canBeatLastCards = true;
-                
-                // 如果最后是自己出的牌就不要判断
-                if (game.lastPlayerId !== nextPlayer.id) {
-                  canBeatLastCards = canPlayerBeatCards(nextPlayer.cards, cards);
-                }
-                
-                return {
-                  playerId: connectionId,
-                  cards,
-                  players: buildPlayersForConnection(game.players, cid),
-                  currentPlayerIndex: game.currentPlayerIndex,
-                  gameStatus: game.status,
-                  multiplier: game.倍数,
-                  canBeatLastCards: cid === nextPlayer.id ? canBeatLastCards : undefined
-                };
-              });
-
-              if (game.status === 'ended') {
-                stopRoomTimer(roomId);
-                const scores = game.calculateScores();
-                const winnerId = game.players.find((p) => p.cards.length === 0).id;
-                const isLandlordWin = winnerId === game.地主PlayerId;
-
-                hub.broadcastRoom(roomId, 'gameEnded', {
-                  winner: isLandlordWin ? 'landlord' : 'farmers',
-                  landlordPlayerId: game.地主PlayerId,
-                  scores,
-                  baseScore: game.底分,
-                  multiplier: game.倍数,
-                  isSpring: game.春天,
-                  players: game.players.map((p) => ({
-                    id: p.id,
-                    name: p.name,
-                    cards: p.cards
-                  }))
-                });
-
-                try {
-                  const room = rooms.get(roomId);
-                  if (room) {
-                    await updateRoomStatus(roomId, 'waiting', room.players.length);
-                  }
-                } catch (error) {
-                  console.error('更新房间状态失败:', error);
-                }
-
-                broadcastRoomList();
-              } else {
-                startCountdown(roomId);
-              }
-            } else {
-              hub.sendTo(connectionId, 'playCardsFailed', { message: '出牌无效' });
-            }
+          case 'playCards':
+            await handlers.playCards(connectionId, data, hub, rooms, games, broadcastRoomList, buildPlayersForConnection, startCountdown, stopCountdown, stopRoomTimer);
             break;
-          }
 
-          case 'pass': {
-            const { roomId } = data;
-            const game = games.get(roomId);
-            if (!game) return;
-
-            if (connectionId === game.players[game.currentPlayerIndex].id) {
-              if (game.lastPlayerId === connectionId) {
-                hub.sendTo(connectionId, 'playCardsFailed', {
-                  message: '当前出牌区的牌是您出的，必须出牌'
-                });
-                return;
-              }
-
-              stopCountdown(roomId);
-
-              game.currentPlayerIndex = (game.currentPlayerIndex + 1) % 3;
-
-              hub.broadcastRoomEach(roomId, 'cardsPlayed', (cid) => {
-                // 计算下家是否能大过最后一家出的牌
-                const nextPlayerIndex = game.currentPlayerIndex;
-                const nextPlayer = game.players[nextPlayerIndex];
-                let canBeatLastCards = true;
-                
-                // 如果最后是自己出的牌就不要判断
-                if (game.lastPlayerId !== nextPlayer.id) {
-                  canBeatLastCards = canPlayerBeatCards(nextPlayer.cards, game.lastCards);
-                }
-                
-                return {
-                  playerId: connectionId,
-                  cards: [],
-                  players: buildPlayersForConnection(game.players, cid),
-                  currentPlayerIndex: game.currentPlayerIndex,
-                  gameStatus: game.status,
-                  multiplier: game.倍数,
-                  canBeatLastCards: cid === nextPlayer.id ? canBeatLastCards : undefined
-                };
-              });
-
-              startCountdown(roomId);
-            }
+          case 'pass':
+            await handlers.pass(connectionId, data, hub, games, buildPlayersForConnection, startCountdown, stopCountdown);
             break;
-          }
 
-          case 'hintRequest': {
-            const { roomId } = data;
-            const game = games.get(roomId);
-            if (!game) {
-              hub.sendTo(connectionId, 'hintResult', { cards: [], message: '游戏不存在' });
-              break;
-            }
-
-            const current = game.players[game.currentPlayerIndex];
-            if (!current || current.id !== connectionId) {
-              hub.sendTo(connectionId, 'hintResult', { cards: [], message: '还没轮到您' });
-              break;
-            }
-
-            const isFreeTurn = !game.lastCards || game.lastCards.length === 0 || game.lastPlayerId === connectionId;
-            const hintCards = getHintCards(current.cards, game.lastCards, isFreeTurn);
-            if (!hintCards || hintCards.length === 0) {
-              hub.sendTo(connectionId, 'hintResult', {
-                cards: [],
-                message: isFreeTurn ? '没有可用的牌' : '没有更大的牌了'
-              });
-              break;
-            }
-
-            hub.sendTo(connectionId, 'hintResult', { cards: hintCards });
+          case 'hintRequest':
+            await handlers.hintRequest(connectionId, data, hub, games);
             break;
-          }
 
           case 'getRooms':
-            hub.sendTo(connectionId, 'roomListUpdated', { rooms: buildRoomListPayload() });
+            await handlers.getRooms(connectionId, data, hub, rooms, games);
+            break;
+
+          case 'trust':
+            await handlers.trust(connectionId, data, hub, players);
             break;
 
           default:

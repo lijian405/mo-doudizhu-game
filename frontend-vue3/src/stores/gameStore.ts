@@ -30,6 +30,7 @@ export const useGameStore = defineStore('game', () => {
   const gameResult = ref<GameResult | null>(null)
   const isProcessing = ref(false)
   const errorMessage = ref<string | null>(null)
+  const isTrustMode = ref(false)
 
   // Getters
   const isGameStarted = computed(() => gameState.value !== null)
@@ -245,6 +246,10 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
+  const setTrustMode = (value: boolean) => {
+    isTrustMode.value = value
+  }
+
   return {
     // State
     gameState,
@@ -257,6 +262,7 @@ export const useGameStore = defineStore('game', () => {
     gameResult,
     isProcessing,
     errorMessage,
+    isTrustMode,
     // Getters
     isGameStarted,
     currentPlayerIndex,
@@ -293,6 +299,7 @@ export const useGameStore = defineStore('game', () => {
     getPlayerPosition,
     updatePlayerCardCount,
     removePlayedCards,
-    updateLandlordPlayerId
+    updateLandlordPlayerId,
+    setTrustMode
   }
 })

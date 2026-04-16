@@ -45,8 +45,8 @@ const cardColor = computed(() => getCardColor(props.card.suit))
 
 const cardStyle = computed(() => ({
   color: cardColor.value === 'red' ? '#e53935' : '#333',
-  width: props.size === 'small' ? '50px' : props.size === 'large' ? '70px' : '60px',
-  height: props.size === 'small' ? '70px' : props.size === 'large' ? '95px' : '80px'
+  width: props.size === 'small' ? '60px' : props.size === 'large' ? '70px' : '60px',
+  height: props.size === 'small' ? '90px' : props.size === 'large' ? '105px' : '100px'
 }))
 
 const handleClick = () => {

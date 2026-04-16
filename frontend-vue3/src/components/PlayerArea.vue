@@ -381,7 +381,7 @@ onUnmounted(() => {
 
 .card-drag-wrapper {
   display: inline-flex;
-  margin-right: -22px;
+  margin-right: -29px;
   transition: transform 0.2s ease;
 
   &:last-child {
