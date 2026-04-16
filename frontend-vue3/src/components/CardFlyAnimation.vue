@@ -5,13 +5,17 @@
     :style="animationStyle as any"
     @animationend="handleAnimationEnd"
   >
-    <CardComponent
+    <div
       v-for="card in cards"
       :key="`${card.suit}-${card.rank}`"
-      :card="card"
-      size="small"
-      disabled
-    />
+      class="card-fly-animation__card"
+    >
+      <CardComponent
+        :card="card"
+        size="small"
+        disabled
+      />
+    </div>
   </div>
 </template>
 
@@ -67,8 +71,16 @@ const handleAnimationEnd = () => {
 
 <style scoped lang="scss">
 .card-fly-animation {
-  display: flex;
-  gap: 8px;
+  display: inline-flex;
+
+  &__card {
+    display: inline-flex;
+    margin-right: -29px;
+
+    &:last-child {
+      margin-right: 0;
+    }
+  }
 
   @keyframes cardFly {
     0% {

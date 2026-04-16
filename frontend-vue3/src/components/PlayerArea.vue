@@ -22,9 +22,10 @@
               :data-card-index="index"
               @mousedown.prevent="onCardMouseDown(card)"
               @mouseenter="onCardMouseEnter(card)"
-              @touchstart.prevent="onCardTouchStart(card)"
-              @touchmove.prevent="onCardTouchMove(card)"
+              @touchstart.prevent="onCardTouchStart(card, $event)"
+              @touchmove.prevent="onCardTouchMove"
               @touchend="onTouchEnd"
+              @touchcancel="onTouchEnd"
             >
               <CardComponent
                 :card="card"
@@ -138,21 +139,26 @@ let startCard: Card | null = null
 
 // 触摸事件相关
 let isTouching = false
+let lastTouchKey: string | null = null
+let touchStartX = 0
 let touchStartY = 0
+const TOUCH_DRAG_THRESHOLD_PX = 6
 
 function cardKey(card: Card): string {
   return `${card.suit}-${card.rank}`
 }
 
-function processCard(card: Card) {
+function processCard(card: Card, forceMode?: 'select' | 'deselect') {
   const key = cardKey(card)
-  if (processedCards.has(key)) return
-  processedCards.add(key)
+  const currentSelected = isCardSelected(card)
+  const mode = forceMode ?? (currentSelected ? 'deselect' : 'select')
 
-  const selected = isCardSelected(card)
-  if (dragMode === 'select' && !selected) {
+  if (processedCards.has(key + mode)) return
+  processedCards.add(key + mode)
+
+  if (mode === 'select' && !currentSelected) {
     emit('card-click', card)
-  } else if (dragMode === 'deselect' && selected) {
+  } else if (mode === 'deselect' && currentSelected) {
     emit('card-click', card)
   }
 }
@@ -178,7 +184,7 @@ const onCardMouseEnter = (card: Card) => {
 const onMouseUp = () => {
   if (!isMouseDown) return
   if (!isDragging && startCard) {
-    emit('card-click', startCard)
+    processCard(startCard)
   }
   isMouseDown = false
   isDragging = false
@@ -187,33 +193,71 @@ const onMouseUp = () => {
 }
 
 // 触摸事件处理
-const onCardTouchStart = (card: Card) => {
+const onCardTouchStart = (card: Card, event: TouchEvent) => {
   if (!props.isSelf) return
   isTouching = true
   isDragging = false
   dragMode = isCardSelected(card) ? 'deselect' : 'select'
   processedCards.clear()
   startCard = card
+  lastTouchKey = cardKey(card)
+
+  const touch = event.touches[0]
+  if (touch) {
+    touchStartX = touch.clientX
+    touchStartY = touch.clientY
+  }
 }
 
-const onCardTouchMove = (card: Card) => {
+const onCardTouchMove = (event: TouchEvent) => {
   if (!isTouching || !props.isSelf) return
+  event.preventDefault()
+
+  const touch = event.touches[0]
+  if (!touch) return
+
+  // 轻微抖动视为点击，不进入滑动多选逻辑（否则可能造成“点一下触发两次切换”）
+  if (!isDragging) {
+    const dx = touch.clientX - touchStartX
+    const dy = touch.clientY - touchStartY
+    if (Math.hypot(dx, dy) < TOUCH_DRAG_THRESHOLD_PX) return
+  }
+
+  const target = document.elementFromPoint(touch.clientX, touch.clientY)
+  if (!target) return
+
+  const cardWrapper = target.closest('.card-drag-wrapper')
+  if (!cardWrapper) return
+
+  const cardIndex = parseInt(cardWrapper.getAttribute('data-card-index') || '-1', 10)
+  if (cardIndex < 0 || cardIndex >= props.cards.length) return
+
+  const card = props.cards[cardIndex]
+  if (!card) return
+  const key = cardKey(card)
+  if (key === lastTouchKey) return
+
   if (!isDragging) {
     isDragging = true
-    if (startCard) processCard(startCard)
+    // 滑动多选：保持模式一致（选中/取消选中），避免每次根据当前状态“来回翻转”
+    if (startCard) processCard(startCard, dragMode)
   }
-  processCard(card)
+
+  lastTouchKey = key
+  processCard(card, dragMode)
 }
 
 const onTouchEnd = () => {
   if (!isTouching) return
   if (!isDragging && startCard) {
-    emit('card-click', startCard)
+    // 点击：切换选中状态
+    processCard(startCard)
   }
   isTouching = false
   isDragging = false
   processedCards.clear()
   startCard = null
+  lastTouchKey = null
 }
 
 onMounted(() => {
@@ -283,6 +327,7 @@ onUnmounted(() => {
     justify-content: center;
     padding: 10px 0;
     flex: 0 0 auto;
+    touch-action: none;
   }
 
   &__countdown {
@@ -395,7 +440,11 @@ onUnmounted(() => {
     margin-right: 0;
   }
 
-  &:hover {
+}
+
+/* 仅在真正支持 hover 的设备（鼠标）上启用悬浮上移，避免移动端触摸残留 hover 导致最后一张牌“更高” */
+@media (hover: hover) and (pointer: fine) {
+  .card-drag-wrapper:hover {
     transform: translateY(-5px);
   }
 }

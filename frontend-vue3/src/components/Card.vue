@@ -69,9 +69,17 @@ const handleClick = () => {
   user-select: none;
   position: relative;
 
-  &:hover:not(&--disabled) {
-    transform: translateY(-5px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  /* 仅在支持 hover 的设备启用，避免移动端触摸残留 hover 导致卡牌“卡住上浮” */
+  @media (hover: hover) and (pointer: fine) {
+    &:hover:not(&--disabled):not(&--selected) {
+      transform: translateY(-5px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    }
+  }
+
+  &:active:not(&--disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25);
   }
 
   &--selected {
@@ -79,6 +87,10 @@ const handleClick = () => {
     background-color: #fff3cd;
     transform: translateY(-5px);
     box-shadow: 0 5px 15px rgba(255, 204, 0, 0.4);
+
+    &:active:not(&--disabled) {
+      transform: translateY(-3px);
+    }
   }
 
   &--disabled {

@@ -3,13 +3,17 @@
     <h4 class="play-area__title">出牌区</h4>
     <div class="play-area__cards">
       <template v-if="cards.length > 0">
-        <CardComponent
-          v-for="card in cards"
+        <div
+          v-for="(card, index) in cards"
           :key="`${card.suit}-${card.rank}`"
-          :card="card"
-          size="small"
-          disabled
-        />
+          class="play-area__card-wrapper"
+        >
+          <CardComponent
+            :card="card"
+            size="small"
+            disabled
+          />
+        </div>
       </template>
       <div v-else class="play-area__empty">
         等待出牌...
@@ -37,7 +41,6 @@ withDefaults(defineProps<Props>(), {
 
 <style scoped lang="scss">
 .play-area {
-
   border-radius: 16px;
   padding: 20px;
   text-align: center;
@@ -50,11 +53,26 @@ withDefaults(defineProps<Props>(), {
 
   &__cards {
     display: flex;
-    flex-wrap: wrap;
     justify-content: center;
-    gap: 8px;
     min-height: 80px;
     align-items: center;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  &__card-wrapper {
+    display: inline-flex;
+    margin-right: -29px;
+    transition: transform 0.2s ease;
+
+    &:last-child {
+      margin-right: 0;
+    }
   }
 
   &__empty {
