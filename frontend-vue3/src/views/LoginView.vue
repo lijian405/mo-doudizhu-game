@@ -1,51 +1,54 @@
 <template>
   <div class="login-view">
     <div class="login-container">
-      <div class="login-header">
-        <h1>联机斗地主</h1>
-        <p class="login-subtitle">AI时代的多人在线游戏体验</p>
-        <div class="online-count">
-          <span class="online-icon">👥</span>
-          <span>当前在线: {{ onlinePlayerCount }} 人</span>
+      <div class="login-left">
+        <div class="login-header">
+          <h1>联机斗地主</h1>
+          <p class="login-subtitle">AI时代的多人在线游戏体验</p>
+          <div class="online-count">
+            <span class="online-icon">👥</span>
+            <span>当前在线: {{ onlinePlayerCount }} 人</span>
+          </div>
+        </div>
+
+        <div class="login-actions">
+          <button
+            class="btn btn--primary create-room-btn"
+            :disabled="isLoading"
+            @click="showCreateModal = true"
+          >
+            {{ isLoading ? '创建中...' : '创建房间' }}
+          </button>
         </div>
       </div>
 
-      <div class="login-actions">
-        <button
-          class="btn btn--primary create-room-btn"
-          :disabled="isLoading"
-          @click="showCreateModal = true"
-        >
-          {{ isLoading ? '创建中...' : '创建房间' }}
-        </button>
-      </div>
-
-      <!-- 房间列表 -->
-      <div class="room-list-section">
-        <h3 class="room-list-title">房间列表</h3>
-        <div class="room-list">
-          <div
-            v-for="room in rooms"
-            :key="room.id"
-            class="room-item"
-            :class="`room-item--${room.roomStatus}`"
-            @click="handleRoomClick(room)"
-          >
-            <div class="room-info">
-              <div class="room-id">
-                <span v-if="room.hasPassword" class="lock-icon">🔒</span>
-                房间: {{ room.id }}
+      <div class="login-right">
+        <div class="room-list-section">
+          <h3 class="room-list-title">房间列表</h3>
+          <div class="room-list">
+            <div
+              v-for="room in rooms"
+              :key="room.id"
+              class="room-item"
+              :class="`room-item--${room.roomStatus}`"
+              @click="handleRoomClick(room)"
+            >
+              <div class="room-info">
+                <div class="room-id">
+                  <span v-if="room.hasPassword" class="lock-icon">🔒</span>
+                  房间: {{ room.id }}
+                </div>
+                <div class="room-players">{{ room.playerCount }}/3 人</div>
               </div>
-              <div class="room-players">{{ room.playerCount }}/3 人</div>
+              <div class="room-status">
+                <span :class="`status-badge status-badge--${room.roomStatus}`">
+                  {{ roomStatusText(room.roomStatus) }}
+                </span>
+              </div>
             </div>
-            <div class="room-status">
-              <span :class="`status-badge status-badge--${room.roomStatus}`">
-                {{ roomStatusText(room.roomStatus) }}
-              </span>
+            <div v-if="rooms.length === 0" class="room-list-empty">
+              暂无房间，快来创建一个吧！
             </div>
-          </div>
-          <div v-if="rooms.length === 0" class="room-list-empty">
-            暂无房间，快来创建一个吧！
           </div>
         </div>
       </div>
@@ -136,7 +139,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { useRouter, RouterLink } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useRoomStore } from '@/stores/roomStore'
 import { useSocket } from '@/composables/useSocket'
@@ -403,40 +406,53 @@ onUnmounted(() => {
 
 <style scoped lang="scss">
 .login-view {
-  display: flex;
-  justify-content: center;
-  align-items: center;
   min-height: 100vh;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 20px;
+  padding: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
 }
 
 .login-container {
-  background-color: white;
-  border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  padding: 40px;
+  display: flex;
+  flex-direction: column;
   width: 100%;
-  max-width: 450px;
-  text-align: center;
-  animation: fadeIn 0.5s ease-in-out;
+  max-width: 900px;
+  gap: 12px;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.login-left {
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.login-right {
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  padding: 16px;
+}
+
+.login-footer {
+  text-align: center;
+  padding: 8px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.75rem;
 }
 
 .login-header {
+  margin-bottom: 12px;
+
   h1 {
-    margin-bottom: 10px;
-    font-size: 2.5rem;
+    margin-bottom: 4px;
+    font-size: 1.4rem;
     font-weight: 700;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     -webkit-background-clip: text;
@@ -445,116 +461,93 @@ onUnmounted(() => {
   }
 
   .login-subtitle {
-    margin-bottom: 20px;
+    margin-bottom: 10px;
     color: #666;
-    font-size: 1.1rem;
+    font-size: 0.85rem;
   }
-  
+
   .online-count {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    justify-content: center;
-    gap: 8px;
-    background-color: #f8f9fa;
-    padding: 10px 20px;
-    border-radius: 20px;
-    margin-bottom: 30px;
-    font-size: 0.9rem;
+    gap: 6px;
+    background-color: #f5f5f5;
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 0.75rem;
     color: #333;
-    font-weight: 600;
-    
+    font-weight: 500;
+
     .online-icon {
-      font-size: 1.2rem;
+      font-size: 1rem;
     }
   }
 }
 
 .login-actions {
-  margin: 30px 0;
+  width: 100%;
 }
 
 .create-room-btn {
   width: 100%;
-  padding: 20px;
-  font-size: 1.2rem;
-  font-weight: 700;
-  border-radius: 12px;
+  padding: 14px;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 10px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
   cursor: pointer;
-  transition: all 0.3s ease;
-  
-  &:hover:not(:disabled) {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+  transition: all 0.2s ease;
+
+  &:active:not(:disabled) {
+    transform: scale(0.98);
   }
-  
+
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
   }
 }
 
-.login-footer {
-  margin-top: 30px;
-  color: #999;
-  font-size: 0.8rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-
-.admin-entry {
-  font-size: 0.75rem;
-  color: #6c757d;
-  text-decoration: none;
-
-  &:hover {
-    color: #495057;
-    text-decoration: underline;
-  }
-}
-
-/* 房间列表 */
 .room-list-section {
-  margin-top: 30px;
-  border-top: 1px solid #e9ecef;
-  padding-top: 20px;
+  border-top: none;
+  padding-top: 0;
 }
 
 .room-list-title {
-  font-size: 1.3rem;
+  font-size: 0.95rem;
   font-weight: 600;
   color: #333;
-  margin-bottom: 15px;
+  margin-bottom: 8px;
   text-align: left;
 }
 
 .room-list {
-  max-height: 300px;
+  max-height: 200px;
   overflow-y: auto;
-  background-color: #f8f9fa;
-  border-radius: 10px;
-  padding: 10px;
+  background-color: #f8f8f8;
+  border-radius: 8px;
+  padding: 8px;
 }
 
 .room-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px;
+  padding: 10px;
   background-color: white;
   border-radius: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   border: 2px solid transparent;
 
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  &:active {
+    transform: scale(0.98);
+  }
+
+  &:last-child {
+    margin-bottom: 0;
   }
 
   &--waiting {
@@ -572,24 +565,25 @@ onUnmounted(() => {
 
 .room-info {
   flex: 1;
+  text-align: left;
 }
 
 .room-id {
   display: flex;
   align-items: center;
-  font-size: 1rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: #333;
-  margin-bottom: 5px;
-}
+  margin-bottom: 2px;
 
-.lock-icon {
-  margin-right: 4px;
-  font-size: 0.85rem;
+  .lock-icon {
+    margin-right: 4px;
+    font-size: 0.8rem;
+  }
 }
 
 .room-players {
-  font-size: 0.9rem;
+  font-size: 0.75rem;
   color: #666;
 }
 
@@ -598,9 +592,9 @@ onUnmounted(() => {
 }
 
 .status-badge {
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 0.8rem;
+  padding: 3px 8px;
+  border-radius: 8px;
+  font-size: 0.7rem;
   font-weight: 600;
 
   &--waiting {
@@ -621,81 +615,225 @@ onUnmounted(() => {
 
 .room-list-empty {
   text-align: center;
-  padding: 40px 20px;
+  padding: 20px 10px;
   color: #999;
-  font-size: 1rem;
+  font-size: 0.85rem;
 }
 
-/* Modal */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.login-left {
+  animation: fadeIn 0.3s ease;
+}
+
+.login-right {
+  animation: fadeIn 0.3s ease 0.1s both;
+}
+
+@media (min-width: 768px) {
+  .login-view {
+    padding: 20px;
+    align-items: center;
+  }
+
+  .login-container {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: stretch;
+    max-width: 900px;
+    gap: 16px;
+  }
+
+  .login-left {
+    width: 30%;
+    min-width: 240px;
+    padding: 24px;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    margin-bottom: 0;
+  }
+
+  .login-right {
+    width: 68%;
+    padding: 24px;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  }
+
+  .login-footer {
+    width: 100%;
+    font-size: 0.8rem;
+  }
+
+  .login-header {
+    margin-bottom: 20px;
+
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 8px;
+    }
+
+    .login-subtitle {
+      font-size: 0.9rem;
+      margin-bottom: 16px;
+    }
+
+    .online-count {
+      padding: 8px 16px;
+      font-size: 0.85rem;
+      border-radius: 20px;
+
+      .online-icon {
+        font-size: 1.1rem;
+      }
+    }
+  }
+
+  .create-room-btn {
+    padding: 16px;
+    font-size: 1.1rem;
+    border-radius: 12px;
+
+    &:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.35);
+    }
+  }
+
+  .room-list-title {
+    font-size: 1.1rem;
+    margin-bottom: 12px;
+  }
+
+  .room-list {
+    max-height: 350px;
+    padding: 10px;
+    border-radius: 10px;
+  }
+
+  .room-item {
+    padding: 12px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+  }
+
+  .room-id {
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+  }
+
+  .room-players {
+    font-size: 0.85rem;
+  }
+
+  .status-badge {
+    padding: 4px 10px;
+    font-size: 0.75rem;
+  }
+
+  .room-list-empty {
+    padding: 30px 15px;
+    font-size: 0.9rem;
+  }
+}
+
+// Modal
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.6);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  padding: 16px;
 }
 
 .modal-content {
   background-color: white;
-  border-radius: 16px;
-  padding: 30px;
+  border-radius: 12px;
+  padding: 16px;
   width: 100%;
-  max-width: 400px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  animation: slideIn 0.3s ease;
+  max-width: 340px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+  animation: slideIn 0.2s ease;
+
+  h3 {
+    margin-bottom: 12px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333;
+    text-align: center;
+  }
 }
 
-.modal-content h3 {
-  margin-bottom: 20px;
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #333;
-  text-align: center;
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .modal-form {
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
 .form-group {
-  margin-bottom: 15px;
+  margin-bottom: 10px;
   text-align: left;
 
   label {
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: 4px;
     font-weight: 600;
     color: #333;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
   }
-  
+
   input {
     width: 100%;
-    padding: 12px;
-    border: 2px solid #e9ecef;
-    border-radius: 8px;
-    font-size: 1rem;
-    transition: all 0.3s ease;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
 
     &:focus {
       outline: none;
       border-color: #667eea;
-      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.15);
     }
   }
 }
 
 .room-id-display {
-  padding: 12px;
-  background-color: #f8f9fa;
-  border: 2px solid #e9ecef;
-  border-radius: 8px;
-  font-size: 1rem;
+  padding: 10px;
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.9rem;
   font-weight: 600;
   color: #667eea;
   text-align: center;
@@ -703,58 +841,207 @@ onUnmounted(() => {
 
 .modal-buttons {
   display: flex;
-  gap: 10px;
-  margin-top: 20px;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 .btn {
   flex: 1;
-  padding: 12px;
+  padding: 10px;
   border: none;
-  border-radius: 8px;
-  font-size: 1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
-  
+  transition: all 0.2s ease;
+
+  &:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
   }
-  
+
   &--primary {
     background-color: #667eea;
     color: white;
-    
+
     &:hover:not(:disabled) {
       background-color: #5a6fd8;
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
     }
   }
-  
+
   &--secondary {
-    background-color: #f8f9fa;
+    background-color: #f0f0f0;
     color: #333;
-    border: 2px solid #e9ecef;
-    
+
     &:hover:not(:disabled) {
-      background-color: #e9ecef;
-      border-color: #667eea;
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+      background-color: #e0e0e0;
     }
   }
 }
 
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
+// 平板及以上 - 桌面端样式
+@media (min-width: 768px) {
+  .login-view {
+    padding: 20px;
+    align-items: center;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+
+  .login-container {
+    padding: 32px;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  }
+
+  .login-header {
+    margin-bottom: 20px;
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 8px;
+    }
+
+    .login-subtitle {
+      font-size: 1rem;
+      margin-bottom: 16px;
+    }
+
+    .online-count {
+      padding: 8px 16px;
+      font-size: 0.85rem;
+      border-radius: 20px;
+
+      .online-icon {
+        font-size: 1.1rem;
+      }
+    }
+  }
+
+  .login-actions {
+    margin: 24px 0;
+  }
+
+  .create-room-btn {
+    padding: 16px;
+    font-size: 1.1rem;
+    border-radius: 12px;
+
+    &:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.35);
+    }
+  }
+
+  .login-footer {
+    margin-top: 24px;
+    font-size: 0.8rem;
+  }
+
+  .room-list-section {
+    margin-top: 24px;
+    padding-top: 16px;
+  }
+
+  .room-list-title {
+    font-size: 1.1rem;
+    margin-bottom: 12px;
+  }
+
+  .room-list {
+    max-height: 250px;
+    padding: 10px;
+    border-radius: 10px;
+  }
+
+  .room-item {
+    padding: 12px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+  }
+
+  .room-id {
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+  }
+
+  .room-players {
+    font-size: 0.85rem;
+  }
+
+  .status-badge {
+    padding: 4px 10px;
+    font-size: 0.75rem;
+  }
+
+  .room-list-empty {
+    padding: 30px 15px;
+    font-size: 0.9rem;
+  }
+
+  .modal-overlay {
+    padding: 20px;
+  }
+
+  .modal-content {
+    padding: 24px;
+    border-radius: 16px;
+
+    h3 {
+      font-size: 1.3rem;
+      margin-bottom: 16px;
+    }
+  }
+
+  .modal-form {
+    margin-bottom: 16px;
+  }
+
+  .form-group {
+    margin-bottom: 12px;
+
+    label {
+      font-size: 0.9rem;
+      margin-bottom: 6px;
+    }
+
+    input {
+      padding: 12px;
+      font-size: 1rem;
+      border-radius: 8px;
+    }
+  }
+
+  .room-id-display {
+    padding: 12px;
+    font-size: 1rem;
+    border-radius: 8px;
+  }
+
+  .modal-buttons {
+    margin-top: 16px;
+    gap: 10px;
+  }
+
+  .btn {
+    padding: 12px;
+    font-size: 1rem;
+    border-radius: 8px;
+
+    &--primary:hover:not(:disabled) {
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    &--secondary:hover:not(:disabled) {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
   }
 }
 </style>

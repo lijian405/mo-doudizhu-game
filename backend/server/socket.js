@@ -225,15 +225,11 @@ function attachWebSocketHandlers(server, state) {
     hub.broadcastRoomEach(roomId, 'cardsPlayed', (cid) => {
       const nextPlayer = game.players[game.currentPlayerIndex];
       let canBeatLastCards = true;
-      // 如果当前玩家不是托管玩家，检查是否可以出牌
-      if (!nextPlayer.isTrust) {
+      // 托管玩家不需要显示"要不起"，因为会自动出牌
+      // 非托管玩家需要检查是否能大过当前出的牌
+      if (!nextPlayer.isTrust && game.lastPlayerId !== nextPlayer.id) {
         canBeatLastCards = canPlayerBeatCards(nextPlayer.cards, cards);
       }
-
-      if (game.lastPlayerId !== nextPlayer.id) {
-        canBeatLastCards = canPlayerBeatCards(nextPlayer.cards, cards);
-      }
-
 
       return {
         playerId,
@@ -255,7 +251,9 @@ function attachWebSocketHandlers(server, state) {
     hub.broadcastRoomEach(roomId, 'cardsPlayed', (cid) => {
       const nextPlayer = game.players[game.currentPlayerIndex];
       let canBeatLastCards = true;
-      if (game.lastPlayerId !== nextPlayer.id) {
+      // 托管玩家不需要显示"要不起"，因为会自动出牌
+      // 非托管玩家需要检查是否能大过上家出的牌
+      if (!nextPlayer.isTrust && game.lastPlayerId !== nextPlayer.id) {
         canBeatLastCards = canPlayerBeatCards(nextPlayer.cards, game.lastCards);
       }
       return {

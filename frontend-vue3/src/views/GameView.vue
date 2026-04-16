@@ -1141,16 +1141,16 @@ onUnmounted(() => {
 }
 
 .calling-content {
-  background-color: white;
+  background-color: transparent;
   border-radius: 16px;
-  padding: 40px;
+  padding: 20px;
   text-align: center;
   max-width: 500px;
   width: 90%;
   animation: slideIn 0.3s ease;
 
   h2 {
-    font-size: 2rem;
+    font-size: 1.5rem;
     margin-bottom: 10px;
     font-weight: 700;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -1160,9 +1160,10 @@ onUnmounted(() => {
   }
 
   .calling-subtitle {
-    margin-bottom: 30px;
-    color: #666;
-    font-size: 1.1rem;
+    margin-bottom: 15px;
+    color: #fff;
+    font-size: 1rem;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
   }
 }
 
@@ -1195,19 +1196,60 @@ onUnmounted(() => {
 
 .calling-buttons {
   display: flex;
-  gap: 15px;
+  gap: 10px;
   justify-content: center;
   flex-wrap: wrap;
 
+  .btn--score {
+    padding: 6px 14px;
+    font-size: 13px;
+    min-width: 50px;
+    font-weight: 700;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    background: linear-gradient(180deg, #b7f7b1 0%, #4ade80 38%, #22c55e 72%, #16a34a 100%);
+    color: #0f4a1f;
+    box-shadow: 0 2px 6px rgba(22, 163, 74, 0.4);
+
+    &:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 3px 8px rgba(22, 163, 74, 0.5);
+    }
+
+    &:active:not(:disabled) {
+      transform: translateY(1px);
+      box-shadow: 0 1px 3px rgba(22, 163, 74, 0.3);
+    }
+
+    &.btn--highlight {
+      background: linear-gradient(180deg, #fde68a 0%, #fbbf24 38%, #f59e0b 72%, #d97706 100%);
+      color: #78350f;
+      box-shadow: 0 2px 6px rgba(245, 158, 11, 0.4);
+    }
+  }
+
   // 叫分「不叫」：与主局「不出」样式区分，保持醒目红色
   .btn--pass {
+    padding: 6px 14px;
+    font-size: 13px;
+    min-width: 50px;
+    font-weight: 700;
+    border-radius: 8px;
     background-color: #f44336;
     color: white;
-    box-shadow: 0 3px 10px rgba(244, 67, 54, 0.35);
+    box-shadow: 0 2px 6px rgba(244, 67, 54, 0.35);
 
     &:hover:not(:disabled) {
       background-color: #da190b;
     }
+  }
+
+  .btn--disabled,
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
   }
 }
 
@@ -1307,19 +1349,7 @@ onUnmounted(() => {
     min-width: 0;
   }
 
-  :deep(.player-area--left .player-area__content),
-  :deep(.player-area--right .player-area__content) {
-    flex-direction: column;
-    gap: 6px;
-  }
 
-  :deep(.player-area--left .player-area__info),
-  :deep(.player-area--right .player-area__info) {
-    flex-direction: column;
-    gap: 4px;
-    align-items: center;
-    text-align: center;
-  }
 
   :deep(.player-area--left .player-area__name),
   :deep(.player-area--right .player-area__name) {
@@ -1419,13 +1449,11 @@ onUnmounted(() => {
   }
 
   .player-area__content {
-    flex-direction: column;
     align-items: flex-start;
     gap: 5px;
   }
 
   .player-area__info {
-    flex-direction: column;
     align-items: center;
     gap: 8px;
   }
@@ -1506,13 +1534,14 @@ onUnmounted(() => {
   }
 
   .calling-buttons {
-    gap: 10px;
-  }
+    gap: 8px;
 
-  .btn {
-    padding: 8px 16px;
-    font-size: 14px;
-    min-width: 80px;
+    .btn--score,
+    .btn--pass {
+      padding: 5px 10px;
+      font-size: 12px;
+      min-width: 45px;
+    }
   }
 }
 </style>

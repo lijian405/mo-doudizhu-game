@@ -76,7 +76,7 @@
       <!-- 卡牌区域 -->
       <div class="player-area__cards">
         <!-- 其他玩家的牌（背面） -->
-        <CardBack size="large" :count="cardCount" />
+        <CardBack size="small" :count="cardCount" />
       </div>
     </template>
   </div>
@@ -248,6 +248,7 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     gap: 10px;
+    flex-wrap: nowrap;
   }
 
   &__bottom-layout {
@@ -268,6 +269,7 @@ onUnmounted(() => {
     overflow-x: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
+    flex-shrink: 0;
 
     &::-webkit-scrollbar {
       display: none;
@@ -292,6 +294,7 @@ onUnmounted(() => {
     border-radius: 20px;
     box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
     animation: pulse 1s infinite;
+    flex-shrink: 0;
   }
 
   &__info {
@@ -299,6 +302,8 @@ onUnmounted(() => {
     align-items: center;
     gap: 12px;
     color: white;
+    flex-shrink: 0;
+    flex-wrap: nowrap;
   }
 
   &__avatar-container {
@@ -306,6 +311,7 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
   }
 
   &__landlord-hat {
@@ -343,6 +349,7 @@ onUnmounted(() => {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    flex-shrink: 0;
   }
 
   &__name {
@@ -424,6 +431,42 @@ onUnmounted(() => {
   50% {
     transform: scale(1.2);
     opacity: 0.7;
+  }
+}
+
+@media (max-width: 480px) {
+  .player-area {
+    &__countdown {
+      font-size: 18px;
+      padding: 6px 10px;
+    }
+
+    &__avatar {
+      width: 40px;
+      height: 40px;
+    }
+
+    &__landlord-hat {
+      width: 36px;
+      height: 36px;
+      top: -24px;
+    }
+
+    &__name {
+      font-size: 13px;
+    }
+
+    &__score {
+      font-size: 11px;
+    }
+
+    &__details {
+      gap: 2px;
+    }
+  }
+
+  .card-drag-wrapper {
+    margin-right: -26px;
   }
 }
 </style>

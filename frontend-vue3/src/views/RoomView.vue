@@ -1,12 +1,31 @@
 <template>
   <div class="room-view">
     <div class="room-container">
-      <div class="room-header">
-        <h2>房间: {{ roomStore.roomId }}</h2>
-        <p class="room-subtitle">{{ statusText }}</p>
+      <div class="room-left">
+        <div class="room-header">
+          <h2>房间: {{ roomStore.roomId }}</h2>
+          <p class="room-subtitle">{{ statusText }}</p>
+        </div>
+
+        <div class="room-buttons">
+          <button
+            class="btn btn--primary"
+            :disabled="!roomStore.canStartGame || isStarting"
+            @click="handleStartGame"
+          >
+            {{ isStarting ? '启动中...' : '开始游戏' }}
+          </button>
+          <button
+            class="btn btn--secondary"
+            :disabled="isStarting"
+            @click="handleLeaveRoom"
+          >
+            离开房间
+          </button>
+        </div>
       </div>
 
-      <div class="room-content">
+      <div class="room-right">
         <div class="players-list">
           <h3>玩家列表 ({{ roomStore.playerCount }}/3)</h3>
           <ul class="players-ul">
@@ -31,23 +50,6 @@
             <span class="info-value">{{ playerStore.currentScore }}</span>
           </div>
         </div>
-      </div>
-
-      <div class="room-buttons">
-        <button
-          class="btn btn--primary"
-          :disabled="!roomStore.canStartGame || isStarting"
-          @click="handleStartGame"
-        >
-          {{ isStarting ? '启动中...' : '开始游戏' }}
-        </button>
-        <button
-          class="btn btn--secondary"
-          :disabled="isStarting"
-          @click="handleLeaveRoom"
-        >
-          离开房间
-        </button>
       </div>
     </div>
 
@@ -187,40 +189,46 @@ onUnmounted(() => {
 
 <style scoped lang="scss">
 .room-view {
-  display: flex;
-  justify-content: center;
-  align-items: center;
   min-height: 100vh;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 20px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .room-container {
-  background-color: white;
-  border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  padding: 40px;
+  display: flex;
+  flex-direction: column;
   width: 100%;
-  max-width: 500px;
-  text-align: center;
-  animation: fadeIn 0.5s ease-in-out;
+  max-width: 900px;
+  gap: 12px;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.room-left {
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.room-right {
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  padding: 16px;
 }
 
 .room-header {
+  margin-bottom: 12px;
+
   h2 {
-    margin-bottom: 10px;
-    font-size: 2rem;
+    margin-bottom: 4px;
+    font-size: 1.2rem;
     font-weight: 700;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     -webkit-background-clip: text;
@@ -229,51 +237,83 @@ onUnmounted(() => {
   }
 
   .room-subtitle {
-    margin-bottom: 30px;
+    margin-bottom: 0;
     color: #666;
-    font-size: 1.1rem;
+    font-size: 0.85rem;
   }
 }
 
-.room-content {
-  margin-bottom: 30px;
+.room-buttons {
+  width: 100%;
+  display: flex;
+  gap: 10px;
+}
+
+.btn {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  &--primary {
+    background-color: #667eea;
+    color: white;
+
+    &:hover:not(:disabled) {
+      background-color: #5a6fd8;
+    }
+  }
+
+  &--secondary {
+    background-color: #f0f0f0;
+    color: #333;
+
+    &:hover:not(:disabled) {
+      background-color: #e0e0e0;
+    }
+  }
 }
 
 .players-list {
-  margin-bottom: 30px;
+  margin-bottom: 12px;
 
   h3 {
-    margin-bottom: 15px;
+    margin-bottom: 8px;
     color: #333;
-    font-size: 1.3rem;
+    font-size: 0.9rem;
   }
 }
 
 .players-ul {
   list-style: none;
-  background-color: #f8f9fa;
-  border-radius: 10px;
-  padding: 20px;
-  max-height: 200px;
-  overflow-y: auto;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  padding: 10px;
 
   li {
-    padding: 12px;
-    border-bottom: 1px solid #e9ecef;
+    padding: 8px;
     color: #333;
-    font-size: 1rem;
-    transition: background-color 0.3s ease;
+    font-size: 0.85rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 6px;
 
-    &:hover {
-      background-color: #e9ecef;
-    }
-
-    &:last-child {
-      border-bottom: none;
+    &:not(:last-child) {
+      border-bottom: 1px solid #e0e0e0;
     }
 
     &.is-self {
@@ -282,23 +322,24 @@ onUnmounted(() => {
     }
 
     .self-tag {
-      font-size: 0.8rem;
+      font-size: 0.7rem;
       color: #999;
     }
   }
 }
 
 .room-info {
-  background-color: #f8f9fa;
-  border-radius: 10px;
-  padding: 20px;
-  margin-bottom: 20px;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
 }
 
 .info-item {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
+  font-size: 0.85rem;
 
   &:last-child {
     margin-bottom: 0;
@@ -315,50 +356,122 @@ onUnmounted(() => {
   font-weight: 600;
 }
 
-.room-buttons {
-  display: flex;
-  gap: 15px;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.btn {
-  flex: 1;
-  padding: 15px;
-  border: none;
-  border-radius: 10px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
+.room-left {
+  animation: fadeIn 0.3s ease;
+}
 
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
+.room-right {
+  animation: fadeIn 0.3s ease 0.1s both;
+}
+
+@media (min-width: 768px) {
+  .room-view {
+    padding: 20px;
+    justify-content: center;
   }
 
-  &--primary {
-    background-color: #667eea;
-    color: white;
+  .room-container {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: stretch;
+    gap: 16px;
+  }
 
-    &:hover:not(:disabled) {
-      background-color: #5a6fd8;
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+  .room-left {
+    width: 30%;
+    min-width: 240px;
+    padding: 24px;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  }
+
+  .room-right {
+    width: 68%;
+    padding: 24px;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  }
+
+  .room-header {
+    margin-bottom: 20px;
+
+    h2 {
+      font-size: 1.6rem;
+      margin-bottom: 8px;
+    }
+
+    .room-subtitle {
+      font-size: 1rem;
+      margin-bottom: 0;
     }
   }
 
-  &--secondary {
-    background-color: #f8f9fa;
-    color: #333;
-    border: 2px solid #e9ecef;
+  .room-buttons {
+    gap: 12px;
+  }
+
+  .btn {
+    padding: 14px;
+    font-size: 1rem;
+    border-radius: 10px;
 
     &:hover:not(:disabled) {
-      background-color: #e9ecef;
-      border-color: #667eea;
       transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
     }
+
+    &--primary:hover:not(:disabled) {
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    &--secondary:hover:not(:disabled) {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+  }
+
+  .players-list {
+    margin-bottom: 20px;
+
+    h3 {
+      font-size: 1.1rem;
+      margin-bottom: 12px;
+    }
+  }
+
+  .players-ul {
+    padding: 16px;
+    border-radius: 10px;
+
+    li {
+      padding: 10px;
+      font-size: 1rem;
+
+      .self-tag {
+        font-size: 0.8rem;
+      }
+    }
+  }
+
+  .room-info {
+    padding: 16px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+  }
+
+  .info-item {
+    margin-bottom: 8px;
+    font-size: 0.95rem;
   }
 }
 </style>
