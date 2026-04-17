@@ -9,11 +9,12 @@
  * @param {function} broadcastRoomList - 广播房间列表的函数
  * @param {function} buildPlayersForConnection - 为连接构建玩家信息的函数
  * @param {function} startRoomTimer - 启动房间计时器的函数
+ * @param {function} startCallingCountdown - 启动叫分倒计时的函数
  */
 const { Game } = require('../../game/gameLogic');
 const updateRoomStatus = require('../../db/db').updateRoomStatus;
 
-const handleStartGame = async (connectionId, data, hub, runtime, rooms, games, broadcastRoomList, buildPlayersForConnection, startRoomTimer) => {
+const handleStartGame = async (connectionId, data, hub, runtime, rooms, games, broadcastRoomList, buildPlayersForConnection, startRoomTimer, startCallingCountdown) => {
   const { roomId } = data;
   const room = rooms.get(roomId);
   if (room && room.players.length >= 3) {
@@ -41,7 +42,7 @@ const handleStartGame = async (connectionId, data, hub, runtime, rooms, games, b
     hub.broadcastRoomEach(roomId, 'gameStarted', (cid) => ({
       room: {
         id: room.id,
-        players: room.players.map((p) => ({ id: p.id, name: p.name })),
+        players: room.players.map((p) => ({ id: p.id, name: p.name, type: p.type })),
         status: room.status
       },
       players: buildPlayersForConnection(game.players, cid),
@@ -57,6 +58,7 @@ const handleStartGame = async (connectionId, data, hub, runtime, rooms, games, b
       }
     }));
 
+    startCallingCountdown(roomId);
     broadcastRoomList();
     console.log(`房间${roomId}开始游戏`);
   }

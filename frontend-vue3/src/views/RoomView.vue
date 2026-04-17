@@ -32,10 +32,20 @@
             <li
               v-for="player in roomStore.players"
               :key="player.id"
-              :class="{ 'is-self': player.id === playerStore.playerId }"
+              :class="{ 'is-self': player.id === playerStore.playerId, 'is-owner': isOwner }"
             >
-              {{ player.name }}
-              <span v-if="player.id === playerStore.playerId" class="self-tag">(我)</span>
+              <span class="player-name">
+                {{ player.name }}
+                <span v-if="player.id === playerStore.playerId" class="self-tag">(我)</span>
+                <span v-if="player.type === 'robot'" class="robot-tag">🤖</span>
+              </span>
+              <button
+                v-if="player.id !== playerStore.playerId"
+                class="btn-kick"
+                @click="handleKickPlayer(player.id)"
+              >
+                踢出
+              </button>
             </li>
           </ul>
         </div>
@@ -49,6 +59,15 @@
             <span class="info-label">当前分值:</span>
             <span class="info-value">{{ playerStore.currentScore }}</span>
           </div>
+        </div>
+
+        <div v-if="!roomStore.isFull" class="room-buttons room-buttons--ai">
+          <button
+            class="btn btn--ai"
+            @click="handleAddAI"
+          >
+            添加AI陪玩
+          </button>
         </div>
       </div>
     </div>
@@ -69,7 +88,7 @@ import { useRoomStore } from '@/stores/roomStore'
 import { useSocket } from '@/composables/useSocket'
 import { useGameStore } from '@/stores/gameStore'
 import GameMessage from '@/components/GameMessage.vue'
-import type { RoomUpdatedData, GameStartedData, CallingUpdatedData, GameAbortedData } from '@/types'
+import type { RoomUpdatedData, GameStartedData, CallingUpdatedData, GameAbortedData, AIAddedData, AddAIFailedData, KickPlayerFailedData, KickedData, PlayerKickedData } from '@/types'
 
 const router = useRouter()
 const playerStore = usePlayerStore()
@@ -91,6 +110,11 @@ const statusText = computed(() => {
     return '房间已满，可以开始游戏'
   }
   return `等待其他玩家加入... (${roomStore.playerCount}/3)`
+})
+
+// 是否是房主
+const isOwner = computed(() => {
+  return roomStore.currentRoom?.ownerId === playerStore.playerId
 })
 
 // 显示消息
@@ -164,6 +188,53 @@ const handleGameAborted = (data: GameAbortedData) => {
   gameStore.clearGame()
 }
 
+// 添加AI陪玩
+const handleAddAI = () => {
+  if (roomStore.isFull) {
+    showToast('房间已满', 'info')
+    return
+  }
+  socket.addAI({ roomId: roomStore.roomId })
+}
+
+// AI添加成功
+const handleAIAdded = (data: AIAddedData) => {
+  console.log('AI添加成功:', data)
+  showToast(`AI玩家 ${data.aiName} 已加入`, 'success')
+}
+
+// AI添加失败
+const handleAIFailed = (data: AddAIFailedData) => {
+  console.log('AI添加失败:', data)
+  showToast(data.message || '添加AI失败', 'error')
+}
+
+// 踢出玩家
+const handleKickPlayer = (targetPlayerId: string) => {
+  socket.kickPlayer({ roomId: roomStore.roomId, targetPlayerId })
+}
+
+// 踢出失败
+const handleKickFailed = (data: KickPlayerFailedData) => {
+  console.log('踢出失败:', data)
+  showToast(data.message || '踢出玩家失败', 'error')
+}
+
+// 被踢出
+const handleKicked = (data: KickedData) => {
+  console.log('被踢出:', data)
+  showToast(data.message || '你已被移出房间', 'info')
+  roomStore.clearRoom()
+  playerStore.clearPlayer()
+  router.push('/')
+}
+
+// 有玩家被踢出
+const handlePlayerKicked = (data: PlayerKickedData) => {
+  console.log('有玩家被踢出:', data)
+  showToast(data.message, 'info')
+}
+
 onMounted(() => {
   // 检查是否在房间中
   if (!roomStore.isInRoom) {
@@ -176,6 +247,11 @@ onMounted(() => {
   socket.on('callingStart', handleCallingStart)
   socket.on('roomDeleted', handleRoomDeleted)
   socket.on('gameAborted', handleGameAborted)
+  socket.on('aiAdded', handleAIAdded)
+  socket.on('addAIFailed', handleAIFailed)
+  socket.on('kickPlayerFailed', handleKickFailed)
+  socket.on('kicked', handleKicked)
+  socket.on('playerKicked', handlePlayerKicked)
 })
 
 onUnmounted(() => {
@@ -184,6 +260,11 @@ onUnmounted(() => {
   socket.off('callingStart', handleCallingStart)
   socket.off('roomDeleted', handleRoomDeleted)
   socket.off('gameAborted', handleGameAborted)
+  socket.off('aiAdded', handleAIAdded)
+  socket.off('addAIFailed', handleAIFailed)
+  socket.off('kickPlayerFailed', handleKickFailed)
+  socket.off('kicked', handleKicked)
+  socket.off('playerKicked', handlePlayerKicked)
 })
 </script>
 
@@ -193,16 +274,17 @@ onUnmounted(() => {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 12px;
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  flex-direction: row;
+  justify-content: center;
+  align-items: flex-start;
 }
 
 .room-container {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  gap: 12px;
   width: 100%;
   max-width: 900px;
-  gap: 12px;
 }
 
 .room-left {
@@ -214,6 +296,8 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   text-align: center;
+  width: 240px;
+  flex-shrink: 0;
 }
 
 .room-right {
@@ -221,6 +305,8 @@ onUnmounted(() => {
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   padding: 16px;
+  flex: 1;
+  min-width: 0;
 }
 
 .room-header {
@@ -285,6 +371,15 @@ onUnmounted(() => {
       background-color: #e0e0e0;
     }
   }
+
+  &--ai {
+    background-color: #4CAF50;
+    color: white;
+
+    &:hover:not(:disabled) {
+      background-color: #45a049;
+    }
+  }
 }
 
 .players-list {
@@ -309,7 +404,7 @@ onUnmounted(() => {
     font-size: 0.85rem;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
     gap: 6px;
 
     &:not(:last-child) {
@@ -321,10 +416,48 @@ onUnmounted(() => {
       color: #667eea;
     }
 
+    .player-name {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
     .self-tag {
       font-size: 0.7rem;
       color: #999;
     }
+
+    .robot-tag {
+      font-size: 0.9rem;
+    }
+
+    .btn-kick {
+      padding: 4px 10px;
+      font-size: 0.75rem;
+      border: none;
+      border-radius: 6px;
+      background-color: #ff4d4f;
+      color: white;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+
+      &:active {
+        transform: scale(0.95);
+      }
+
+      &:hover {
+        background-color: #ff7875;
+      }
+    }
+  }
+}
+
+.room-buttons--ai {
+  margin-top: 12px;
+
+  .btn--ai {
+    width: 100%;
   }
 }
 
@@ -375,103 +508,73 @@ onUnmounted(() => {
   animation: fadeIn 0.3s ease 0.1s both;
 }
 
-@media (min-width: 768px) {
-  .room-view {
-    padding: 20px;
-    justify-content: center;
+.room-header {
+  margin-bottom: 16px;
+
+  h2 {
+    font-size: 1.4rem;
+    margin-bottom: 6px;
   }
 
-  .room-container {
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    align-items: stretch;
-    gap: 16px;
+  .room-subtitle {
+    font-size: 0.9rem;
+    margin-bottom: 0;
+  }
+}
+
+.room-buttons {
+  gap: 10px;
+}
+
+.btn {
+  padding: 14px;
+  font-size: 0.95rem;
+  border-radius: 10px;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
   }
 
-  .room-left {
-    width: 30%;
-    min-width: 240px;
-    padding: 24px;
-    border-radius: 16px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  &--primary:hover:not(:disabled) {
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
   }
 
-  .room-right {
-    width: 68%;
-    padding: 24px;
-    border-radius: 16px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  &--secondary:hover:not(:disabled) {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   }
+}
 
-  .room-header {
-    margin-bottom: 20px;
+.players-list {
+  margin-bottom: 16px;
 
-    h2 {
-      font-size: 1.6rem;
-      margin-bottom: 8px;
-    }
-
-    .room-subtitle {
-      font-size: 1rem;
-      margin-bottom: 0;
-    }
-  }
-
-  .room-buttons {
-    gap: 12px;
-  }
-
-  .btn {
-    padding: 14px;
+  h3 {
     font-size: 1rem;
-    border-radius: 10px;
-
-    &:hover:not(:disabled) {
-      transform: translateY(-2px);
-    }
-
-    &--primary:hover:not(:disabled) {
-      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-    }
-
-    &--secondary:hover:not(:disabled) {
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
+    margin-bottom: 10px;
   }
+}
 
-  .players-list {
-    margin-bottom: 20px;
+.players-ul {
+  padding: 12px;
+  border-radius: 10px;
 
-    h3 {
-      font-size: 1.1rem;
-      margin-bottom: 12px;
+  li {
+    padding: 10px;
+    font-size: 0.9rem;
+
+    .self-tag {
+      font-size: 0.75rem;
     }
   }
+}
 
-  .players-ul {
-    padding: 16px;
-    border-radius: 10px;
+.room-info {
+  padding: 14px;
+  border-radius: 10px;
+  margin-bottom: 14px;
+}
 
-    li {
-      padding: 10px;
-      font-size: 1rem;
-
-      .self-tag {
-        font-size: 0.8rem;
-      }
-    }
-  }
-
-  .room-info {
-    padding: 16px;
-    border-radius: 10px;
-    margin-bottom: 16px;
-  }
-
-  .info-item {
-    margin-bottom: 8px;
-    font-size: 0.95rem;
-  }
+.info-item {
+  margin-bottom: 8px;
+  font-size: 0.9rem;
 }
 </style>

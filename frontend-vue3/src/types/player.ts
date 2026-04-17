@@ -7,6 +7,9 @@ import type { Card } from './card'
 // 玩家角色
 export type PlayerRole = 'landlord' | 'farmer'
 
+// 玩家类型
+export type PlayerType = 'human' | 'robot'
+
 // 玩家基础信息
 export interface PlayerBase {
   id: string
@@ -15,6 +18,7 @@ export interface PlayerBase {
   role?: PlayerRole
   isLandlord: boolean
   score: number
+  type?: PlayerType
 }
 
 // 游戏中的玩家（cards 仅自己可见，其他人只有 cardCount）
@@ -35,6 +39,7 @@ export interface PlayerState {
   isCurrentTurn: boolean
   cardCount: number
   position: PlayerPosition
+  type?: PlayerType
 }
 
 // 当前登录玩家
@@ -44,4 +49,5 @@ export interface CurrentPlayer {
   avatar?: string
   roomId: string
   score: number
+  type?: PlayerType
 }

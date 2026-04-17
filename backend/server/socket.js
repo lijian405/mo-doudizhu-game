@@ -117,12 +117,93 @@ function attachWebSocketHandlers(server, state) {
 
   // 常量提取（可统一配置）
   const COUNTDOWN_SECONDS = 30;
+  const CALLING_COUNTDOWN_SECONDS = 10;
 
   /** 清除指定 Game 实例上的出牌倒计时（含已从 games 中替换掉的旧局） */
   function clearGameCountdownTimer(game) {
     if (!game?.countdownTimer) return;
     clearInterval(game.countdownTimer);
     game.countdownTimer = null;
+  }
+
+  /**
+   * 开始叫分阶段倒计时（仅处理叫分）
+   * @param {string} roomId - 房间ID
+   */
+  function startCallingCountdown(roomId) {
+    const game = games.get(roomId);
+    if (!game || game.status !== 'calling') return;
+
+    clearGameCountdownTimer(game);
+    game.countdown = CALLING_COUNTDOWN_SECONDS;
+
+    const currentPlayer = game.players[game.叫牌状态.currentCallerIndex];
+
+    broadcastCallingCountdown(roomId, game);
+
+    game.countdownTimer = setInterval(() => {
+      game.countdown--;
+      broadcastCallingCountdown(roomId, game);
+
+      // AI玩家3秒后自动叫分
+      if (currentPlayer.type === 'robot' && game.countdown <= CALLING_COUNTDOWN_SECONDS - 3) {
+        clearGameCountdownTimer(game);
+        handleAICallLandlord(roomId, game, currentPlayer);
+        return;
+      }
+
+      if (game.countdown <= 0) {
+        clearGameCountdownTimer(game);
+        handleAICallLandlord(roomId, game, currentPlayer);
+      }
+    }, 1000);
+  }
+
+  function broadcastCallingCountdown(roomId, game) {
+    hub.broadcastRoom(roomId, 'countdownUpdated', {
+      countdown: game.countdown,
+      currentPlayerIndex: game.叫牌状态.currentCallerIndex,
+      players: game.players.map(p => ({ id: p.id, name: p.name, type: p.type }))
+    });
+  }
+
+  function handleAICallLandlord(roomId, game, currentPlayer) {
+    if (game.status !== 'calling') return;
+
+    const aiCallScore = Math.floor(Math.random() * 2) + 1;
+    const maxPossibleScore = 3 - game.叫牌状态.highestScore > 0 ? game.叫牌状态.highestScore + 1 : 3;
+    const callScore = Math.min(aiCallScore, maxPossibleScore);
+
+    game.call地主(currentPlayer.id, callScore);
+
+    hub.broadcastRoom(roomId, 'callingUpdated', {
+      currentCallerIndex: game.叫牌状态.currentCallerIndex,
+      highestScore: game.叫牌状态.highestScore,
+      highestBidder: game.叫牌状态.highestBidder,
+      gameStatus: game.status,
+      players: game.players.map((p) => ({ id: p.id, name: p.name, type: p.type }))
+    });
+
+    if (game.status === 'playing') {
+      const room = rooms.get(roomId);
+      hub.broadcastRoomEach(roomId, 'gameStarted', (cid) => ({
+        room: {
+          id: room.id,
+          players: room.players.map((p) => ({ id: p.id, name: p.name, type: p.type })),
+          status: room.status
+        },
+        players: buildPlayersForConnection(game.players, cid),
+        landlordCards: game.地主Cards,
+        landlordPlayerId: game.地主PlayerId,
+        currentPlayerIndex: game.currentPlayerIndex,
+        baseScore: game.底分,
+        multiplier: game.倍数,
+        gameStarted: true
+      }));
+      startCountdown(roomId);
+    } else {
+      startCallingCountdown(roomId);
+    }
   }
 
   /**
@@ -151,8 +232,9 @@ function attachWebSocketHandlers(server, state) {
     game.countdownTimer = setInterval(() => {
       game.countdown--;
       broadcastCountdown(roomId, game);
-      // ============== 核心：托管玩家 → 3秒后立即自动出牌 ==============
-      if (currentPlayer.isTrust && game.countdown >= 3) {
+      // ============== 托管玩家或AI玩家 → 3秒后立即自动出牌 ==============
+      const isAutoPlay = currentPlayer.isTrust || currentPlayer.type === 'robot';
+      if (isAutoPlay && game.countdown >= COUNTDOWN_SECONDS - 3) {
         handleAutoPlay(roomId, game, currentPlayer, currentPlayerId);
         return;
       }
@@ -201,7 +283,6 @@ function attachWebSocketHandlers(server, state) {
 
         // 检查游戏是否结束
         if (game.status === 'ended') {
-          console.log('handleAutoPlay,游戏结束');
           handleGameEnd(roomId, game);
           return;
         }
@@ -380,7 +461,29 @@ function attachWebSocketHandlers(server, state) {
         roomId,
         message: '房间内已无玩家，房间已关闭'
       });
-    } else {
+    } else if (player.type === 'human') {
+      const hasHuman = room.players.some(p => p.type === 'human');
+      if (!hasHuman) {
+        console.log(`房间${roomId}内无人类玩家，销毁房间`);
+        stopRoomTimer(roomId);
+        stopCountdown(roomId);
+        games.delete(roomId);
+        rooms.delete(roomId);
+        try {
+          await deleteRoom(roomId);
+        } catch (error) {
+          console.error('删除房间失败:', error);
+        }
+        hub.broadcastRoom(roomId, 'roomDeleted', {
+          roomId,
+          message: '所有人类玩家已离开，房间已关闭'
+        });
+        broadcastRoomList();
+        return;
+      }
+    }
+
+    if (room.players.length > 0) {
       if (isOwner) {
         room.ownerId = room.players[0].id;
         console.log(`房主离开，${room.players[0].name} 成为新房主`);
@@ -393,7 +496,7 @@ function attachWebSocketHandlers(server, state) {
       }
       hub.broadcastRoom(roomId, 'roomUpdated', {
         roomId: room.id,
-        players: room.players.map((p) => ({ id: p.id, name: p.name }))
+        players: room.players.map((p) => ({ id: p.id, name: p.name, type: p.type }))
       });
     }
 
@@ -484,11 +587,11 @@ function attachWebSocketHandlers(server, state) {
             break;
 
           case 'startGame':
-            await handlers.startGame(connectionId, data, hub, runtime, rooms, games, broadcastRoomList, buildPlayersForConnection, startRoomTimer);
+            await handlers.startGame(connectionId, data, hub, runtime, rooms, games, broadcastRoomList, buildPlayersForConnection, startRoomTimer, startCallingCountdown);
             break;
 
           case 'callLandlord':
-            await handlers.callLandlord(connectionId, data, hub, rooms, games, broadcastRoomList, buildPlayersForConnection, startCountdown);
+            await handlers.callLandlord(connectionId, data, hub, rooms, games, broadcastRoomList, buildPlayersForConnection, startCountdown, startCallingCountdown);
             break;
 
           case 'playCards':
@@ -505,6 +608,14 @@ function attachWebSocketHandlers(server, state) {
 
           case 'getRooms':
             await handlers.getRooms(connectionId, data, hub, rooms, games);
+            break;
+
+          case 'addAI':
+            await handlers.addAI(connectionId, data, hub, runtime, rooms, players, broadcastRoomList);
+            break;
+
+          case 'kickPlayer':
+            await handlers.kickPlayer(connectionId, data, hub, rooms, players, removePlayerFromRoom);
             break;
 
           case 'trust':

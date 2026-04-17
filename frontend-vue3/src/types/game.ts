@@ -26,6 +26,7 @@ export interface Room {
   players: PlayerBase[]
   status: GameStatus
   maxPlayers: number
+  ownerId?: string
 }
 
 // 叫分信息

@@ -14,7 +14,9 @@ import type {
   PlayCardsData,
   PassData,
   HintRequestData,
-  TrustData
+  TrustData,
+  AddAIData,
+  KickPlayerData
 } from '@/types'
 
 function getWsUrl(): string {
@@ -171,6 +173,8 @@ export function useSocket() {
   const hintRequest = (data: HintRequestData) => emit('hintRequest', data)
   const getRooms = () => emit('getRooms')
   const setTrust = (data: TrustData) => emit('trust', data)
+  const addAI = (data: AddAIData) => emit('addAI', data)
+  const kickPlayer = (data: KickPlayerData) => emit('kickPlayer', data)
 
   onMounted(() => {
     connect()
@@ -195,6 +199,8 @@ export function useSocket() {
     pass,
     hintRequest,
     getRooms,
-    setTrust
+    setTrust,
+    addAI,
+    kickPlayer
   }
 }

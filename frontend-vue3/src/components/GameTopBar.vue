@@ -129,11 +129,5 @@ function cardLabel(c: Card): string {
   color: #7ee8ff;
   text-shadow: 0 0 12px rgba(126, 232, 255, 0.22);
 }
-
-@media (max-width: 768px) {
-  .center {
-    display: none;
-  }
-}
 </style>
 

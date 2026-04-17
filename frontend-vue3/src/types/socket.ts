@@ -59,6 +59,17 @@ export interface TrustData {
   trust: boolean
 }
 
+// 添加AI陪玩
+export interface AddAIData {
+  roomId: string
+}
+
+// 踢出玩家
+export interface KickPlayerData {
+  roomId: string
+  targetPlayerId: string
+}
+
 // ==================== 服务器发送事件 ====================
 
 // 房间更新
@@ -203,6 +214,11 @@ export interface JoinRoomFailedData {
 export interface ServerToClientEvents {
   roomUpdated: (data: RoomUpdatedData) => void
   joinRoomFailed: (data: JoinRoomFailedData) => void
+  addAIFailed: (data: AddAIFailedData) => void
+  aiAdded: (data: AIAddedData) => void
+  kickPlayerFailed: (data: KickPlayerFailedData) => void
+  kicked: (data: KickedData) => void
+  playerKicked: (data: PlayerKickedData) => void
   gameStarted: (data: GameStartedData) => void
   callingUpdated: (data: CallingUpdatedData) => void
   cardsPlayed: (data: CardsPlayedData) => void
@@ -219,6 +235,32 @@ export interface ServerToClientEvents {
   trustUpdated: (data: TrustUpdatedData) => void
 }
 
+export interface AddAIFailedData {
+  message: string
+}
+
+export interface AIAddedData {
+  aiId: string
+  aiName: string
+  playerCount: number
+}
+
+export interface KickPlayerFailedData {
+  message: string
+}
+
+export interface KickedData {
+  roomId: string
+  message: string
+}
+
+export interface PlayerKickedData {
+  roomId: string
+  kickedPlayerId: string
+  kickedPlayerName: string
+  message: string
+}
+
 export interface ClientToServerEvents {
   joinRoom: (data: JoinRoomData) => void
   leaveRoom: (data: LeaveRoomData) => void
@@ -231,6 +273,8 @@ export interface ClientToServerEvents {
   getRooms: () => void
   getOnlineCount: () => void
   trust: (data: TrustData) => void
+  addAI: (data: AddAIData) => void
+  kickPlayer: (data: KickPlayerData) => void
 }
 
 export interface RoomTimerUpdatedData {

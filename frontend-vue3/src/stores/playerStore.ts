@@ -36,6 +36,8 @@ export const usePlayerStore = defineStore('player', () => {
     return playerScores.value[currentPlayer.value.id] ?? defaultPlayerScore.value
   })
 
+  const playerType = computed(() => currentPlayer.value?.type ?? 'human')
+
   // Actions
   const setCurrentPlayer = (player: CurrentPlayer) => {
     currentPlayer.value = player
@@ -92,6 +94,7 @@ export const usePlayerStore = defineStore('player', () => {
     playerId,
     roomId,
     currentScore,
+    playerType,
     // Actions
     setCurrentPlayer,
     setRoomId,

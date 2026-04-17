@@ -50,7 +50,8 @@ const handleJoinRoom = async (connectionId, data, hub, runtime, rooms, players, 
     name: playerName,
     roomId,
     cards: [],
-    isTrust: false
+    isTrust: false,
+    type: 'human'
   };
 
   room.players.push(player);
@@ -76,7 +77,7 @@ const handleJoinRoom = async (connectionId, data, hub, runtime, rooms, players, 
 
   hub.broadcastRoom(roomId, 'roomUpdated', {
     roomId: room.id,
-    players: room.players.map((p) => ({ id: p.id, name: p.name }))
+    players: room.players.map((p) => ({ id: p.id, name: p.name, type: p.type }))
   });
 
   broadcastRoomList();

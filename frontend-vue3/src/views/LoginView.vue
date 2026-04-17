@@ -1,6 +1,6 @@
 <template>
   <div class="login-view">
-    <div class="login-container">
+    <div class="login-main">
       <div class="login-left">
         <div class="login-header">
           <h1>联机斗地主</h1>
@@ -52,11 +52,9 @@
           </div>
         </div>
       </div>
-
-      <div class="login-footer">
-        <p>© 2026 联机斗地主 - AI时代的游戏体验</p>
-      </div>
     </div>
+
+    <p class="login-footer">© 2026 联机斗地主 - AI时代的游戏体验</p>
 
     <!-- 创建房间 Modal -->
     <div v-if="showCreateModal" class="modal-overlay" @click="showCreateModal = false">
@@ -410,16 +408,17 @@ onUnmounted(() => {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 12px;
   display: flex;
-  justify-content: center;
-  align-items: flex-start;
+  flex-direction: column;
 }
 
-.login-container {
+.login-main {
   display: flex;
-  flex-direction: column;
-  width: 100%;
-  max-width: 900px;
+  flex-direction: row;
   gap: 12px;
+  flex: 1;
+  max-width: 900px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .login-left {
@@ -431,6 +430,8 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   text-align: center;
+  width: 240px;
+  flex-shrink: 0;
 }
 
 .login-right {
@@ -438,32 +439,34 @@ onUnmounted(() => {
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   padding: 16px;
+  flex: 1;
+  min-width: 0;
 }
 
 .login-footer {
   text-align: center;
-  padding: 8px;
+  padding: 12px;
   color: rgba(255, 255, 255, 0.8);
   font-size: 0.75rem;
 }
 
 .login-header {
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 
   h1 {
-    margin-bottom: 4px;
     font-size: 1.4rem;
     font-weight: 700;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    margin-bottom: 6px;
   }
 
   .login-subtitle {
-    margin-bottom: 10px;
+    font-size: 0.9rem;
     color: #666;
-    font-size: 0.85rem;
+    margin-bottom: 12px;
   }
 
   .online-count {
@@ -471,9 +474,9 @@ onUnmounted(() => {
     align-items: center;
     gap: 6px;
     background-color: #f5f5f5;
-    padding: 6px 12px;
-    border-radius: 16px;
-    font-size: 0.75rem;
+    padding: 8px 14px;
+    border-radius: 18px;
+    font-size: 0.8rem;
     color: #333;
     font-weight: 500;
 
@@ -503,6 +506,11 @@ onUnmounted(() => {
     transform: scale(0.98);
   }
 
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.35);
+  }
+
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
@@ -510,24 +518,24 @@ onUnmounted(() => {
 }
 
 .room-list-section {
-  border-top: none;
-  padding-top: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .room-list-title {
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 600;
   color: #333;
-  margin-bottom: 8px;
-  text-align: left;
+  margin-bottom: 10px;
 }
 
 .room-list {
-  max-height: 200px;
+  flex: 1;
   overflow-y: auto;
   background-color: #f8f8f8;
   border-radius: 8px;
-  padding: 8px;
+  padding: 10px;
 }
 
 .room-item {
@@ -561,6 +569,11 @@ onUnmounted(() => {
   &--playing {
     border-color: #f44336;
   }
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
 }
 
 .room-info {
@@ -571,7 +584,7 @@ onUnmounted(() => {
 .room-id {
   display: flex;
   align-items: center;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   font-weight: 600;
   color: #333;
   margin-bottom: 2px;
@@ -583,7 +596,7 @@ onUnmounted(() => {
 }
 
 .room-players {
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   color: #666;
 }
 
@@ -594,7 +607,7 @@ onUnmounted(() => {
 .status-badge {
   padding: 3px 8px;
   border-radius: 8px;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 600;
 
   &--waiting {
@@ -615,9 +628,9 @@ onUnmounted(() => {
 
 .room-list-empty {
   text-align: center;
-  padding: 20px 10px;
+  padding: 24px 12px;
   color: #999;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
 }
 
 @keyframes fadeIn {
@@ -639,120 +652,6 @@ onUnmounted(() => {
   animation: fadeIn 0.3s ease 0.1s both;
 }
 
-@media (min-width: 768px) {
-  .login-view {
-    padding: 20px;
-    align-items: center;
-  }
-
-  .login-container {
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    align-items: stretch;
-    max-width: 900px;
-    gap: 16px;
-  }
-
-  .login-left {
-    width: 30%;
-    min-width: 240px;
-    padding: 24px;
-    border-radius: 16px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-    margin-bottom: 0;
-  }
-
-  .login-right {
-    width: 68%;
-    padding: 24px;
-    border-radius: 16px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  }
-
-  .login-footer {
-    width: 100%;
-    font-size: 0.8rem;
-  }
-
-  .login-header {
-    margin-bottom: 20px;
-
-    h1 {
-      font-size: 1.8rem;
-      margin-bottom: 8px;
-    }
-
-    .login-subtitle {
-      font-size: 0.9rem;
-      margin-bottom: 16px;
-    }
-
-    .online-count {
-      padding: 8px 16px;
-      font-size: 0.85rem;
-      border-radius: 20px;
-
-      .online-icon {
-        font-size: 1.1rem;
-      }
-    }
-  }
-
-  .create-room-btn {
-    padding: 16px;
-    font-size: 1.1rem;
-    border-radius: 12px;
-
-    &:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.35);
-    }
-  }
-
-  .room-list-title {
-    font-size: 1.1rem;
-    margin-bottom: 12px;
-  }
-
-  .room-list {
-    max-height: 350px;
-    padding: 10px;
-    border-radius: 10px;
-  }
-
-  .room-item {
-    padding: 12px;
-    margin-bottom: 8px;
-    border-radius: 8px;
-
-    &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    }
-  }
-
-  .room-id {
-    font-size: 0.95rem;
-    margin-bottom: 4px;
-  }
-
-  .room-players {
-    font-size: 0.85rem;
-  }
-
-  .status-badge {
-    padding: 4px 10px;
-    font-size: 0.75rem;
-  }
-
-  .room-list-empty {
-    padding: 30px 15px;
-    font-size: 0.9rem;
-  }
-}
-
-// Modal
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -879,168 +778,6 @@ onUnmounted(() => {
 
     &:hover:not(:disabled) {
       background-color: #e0e0e0;
-    }
-  }
-}
-
-// 平板及以上 - 桌面端样式
-@media (min-width: 768px) {
-  .login-view {
-    padding: 20px;
-    align-items: center;
-  }
-
-  .login-container {
-    padding: 32px;
-    border-radius: 16px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  }
-
-  .login-header {
-    margin-bottom: 20px;
-
-    h1 {
-      font-size: 2rem;
-      margin-bottom: 8px;
-    }
-
-    .login-subtitle {
-      font-size: 1rem;
-      margin-bottom: 16px;
-    }
-
-    .online-count {
-      padding: 8px 16px;
-      font-size: 0.85rem;
-      border-radius: 20px;
-
-      .online-icon {
-        font-size: 1.1rem;
-      }
-    }
-  }
-
-  .login-actions {
-    margin: 24px 0;
-  }
-
-  .create-room-btn {
-    padding: 16px;
-    font-size: 1.1rem;
-    border-radius: 12px;
-
-    &:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.35);
-    }
-  }
-
-  .login-footer {
-    margin-top: 24px;
-    font-size: 0.8rem;
-  }
-
-  .room-list-section {
-    margin-top: 24px;
-    padding-top: 16px;
-  }
-
-  .room-list-title {
-    font-size: 1.1rem;
-    margin-bottom: 12px;
-  }
-
-  .room-list {
-    max-height: 250px;
-    padding: 10px;
-    border-radius: 10px;
-  }
-
-  .room-item {
-    padding: 12px;
-    margin-bottom: 8px;
-    border-radius: 8px;
-
-    &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    }
-  }
-
-  .room-id {
-    font-size: 0.95rem;
-    margin-bottom: 4px;
-  }
-
-  .room-players {
-    font-size: 0.85rem;
-  }
-
-  .status-badge {
-    padding: 4px 10px;
-    font-size: 0.75rem;
-  }
-
-  .room-list-empty {
-    padding: 30px 15px;
-    font-size: 0.9rem;
-  }
-
-  .modal-overlay {
-    padding: 20px;
-  }
-
-  .modal-content {
-    padding: 24px;
-    border-radius: 16px;
-
-    h3 {
-      font-size: 1.3rem;
-      margin-bottom: 16px;
-    }
-  }
-
-  .modal-form {
-    margin-bottom: 16px;
-  }
-
-  .form-group {
-    margin-bottom: 12px;
-
-    label {
-      font-size: 0.9rem;
-      margin-bottom: 6px;
-    }
-
-    input {
-      padding: 12px;
-      font-size: 1rem;
-      border-radius: 8px;
-    }
-  }
-
-  .room-id-display {
-    padding: 12px;
-    font-size: 1rem;
-    border-radius: 8px;
-  }
-
-  .modal-buttons {
-    margin-top: 16px;
-    gap: 10px;
-  }
-
-  .btn {
-    padding: 12px;
-    font-size: 1rem;
-    border-radius: 8px;
-
-    &--primary:hover:not(:disabled) {
-      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-    }
-
-    &--secondary:hover:not(:disabled) {
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
   }
 }

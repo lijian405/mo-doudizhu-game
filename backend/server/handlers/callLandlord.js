@@ -7,11 +7,12 @@
  * @param {Map} games - 游戏信息映射
  * @param {function} broadcastRoomList - 广播房间列表的函数
  * @param {function} buildPlayersForConnection - 为连接构建玩家信息的函数
- * @param {function} startCountdown - 启动倒计时的函数
+ * @param {function} startCountdown - 启动出牌倒计时的函数
+ * @param {function} startCallingCountdown - 启动叫分倒计时的函数
  */
 
 
-const handleCallLandlord = (connectionId, data, hub, rooms, games, broadcastRoomList, buildPlayersForConnection, startCountdown) => {
+const handleCallLandlord = (connectionId, data, hub, rooms, games, broadcastRoomList, buildPlayersForConnection, startCountdown, startCallingCountdown) => {
   const { roomId, score } = data;
   const game = games.get(roomId);
   if (game) {
@@ -22,7 +23,7 @@ const handleCallLandlord = (connectionId, data, hub, rooms, games, broadcastRoom
         highestScore: game.叫牌状态.highestScore,
         highestBidder: game.叫牌状态.highestBidder,
         gameStatus: game.status,
-        players: game.players.map((p) => ({ id: p.id, name: p.name }))
+        players: game.players.map((p) => ({ id: p.id, name: p.name, type: p.type }))
       });
 
       if (game.status === 'playing') {
@@ -30,7 +31,7 @@ const handleCallLandlord = (connectionId, data, hub, rooms, games, broadcastRoom
         hub.broadcastRoomEach(roomId, 'gameStarted', (cid) => ({
           room: {
             id: room.id,
-            players: room.players.map((p) => ({ id: p.id, name: p.name })),
+            players: room.players.map((p) => ({ id: p.id, name: p.name, type: p.type })),
             status: room.status
           },
           players: buildPlayersForConnection(game.players, cid),
@@ -44,6 +45,8 @@ const handleCallLandlord = (connectionId, data, hub, rooms, games, broadcastRoom
 
         startCountdown(roomId);
         broadcastRoomList();
+      } else {
+        startCallingCountdown(roomId);
       }
     }
   }

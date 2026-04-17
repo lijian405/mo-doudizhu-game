@@ -46,7 +46,6 @@ const handlePlayCards = async (connectionId, data, hub, rooms, games, broadcastR
     });
 
     if (game.status === 'ended') {
-      console.log('handlePlayCards,游戏结束');
       stopRoomTimer(roomId);
       const winner = game.players.find((p) => p.cards.length === 0);
       if (!winner) {

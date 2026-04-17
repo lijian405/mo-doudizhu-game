@@ -8,6 +8,8 @@ const handlePass = require('./pass');
 const handleHintRequest = require('./hintRequest');
 const handleGetRooms = require('./getRooms');
 const handleTrust = require('./trust');
+const handleAddAI = require('./addAI');
+const handleKickPlayer = require('./kickPlayer');
 
 module.exports = {
   getOnlineCount: handleGetOnlineCount,
@@ -19,5 +21,7 @@ module.exports = {
   pass: handlePass,
   hintRequest: handleHintRequest,
   getRooms: handleGetRooms,
-  trust: handleTrust
+  trust: handleTrust,
+  addAI: handleAddAI,
+  kickPlayer: handleKickPlayer
 };
